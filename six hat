@@ -1,0 +1,438 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { LucideCheckCircle, LucideAlertCircle, LucideSend, LucideHistory, LucideLoader2, LucideTarget, LucideTrophy, LucideUsers, LucideCrown, LucideLock, LucideHash, LucideLightbulb, LucideSparkles, LucideBrainCircuit, LucideWand2, LucideChevronDown, LucideMenu } from 'lucide-react';
+
+// --- Constants & Config ---
+const apiKey = ""; // System will provide at runtime
+
+// --- Assets ---
+const Avatar = ({ type }) => {
+  const characters = {
+    white: (
+      <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
+        <circle cx="50" cy="40" r="25" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="1.5"/>
+        <rect x="35" y="65" width="30" height="35" rx="8" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="1.5"/>
+        <circle cx="42" cy="38" r="3" fill="#334155"/>
+        <circle cx="58" cy="38" r="3" fill="#334155"/>
+      </svg>
+    ),
+    red: (
+      <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
+        <circle cx="50" cy="40" r="25" fill="#ef4444" stroke="#b91c1c" strokeWidth="1.5"/>
+        <path d="M50 85 Q30 85 30 68 Q30 52 50 52 Q70 52 70 68 Q70 85 50 85" fill="#ef4444" opacity="0.8"/>
+        <circle cx="42" cy="38" r="3.5" fill="#7f1d1d"/>
+        <circle cx="58" cy="38" r="3.5" fill="#7f1d1d"/>
+      </svg>
+    ),
+    black: (
+      <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
+        <circle cx="50" cy="40" r="25" fill="#1e293b" stroke="#000" strokeWidth="1.5"/>
+        <rect x="30" y="65" width="40" height="30" rx="4" fill="#1e293b"/>
+        <circle cx="42" cy="38" r="3" fill="#f8fafc"/>
+        <circle cx="58" cy="38" r="3" fill="#f8fafc"/>
+      </svg>
+    ),
+    yellow: (
+      <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
+        <circle cx="50" cy="40" r="25" fill="#fbbf24" stroke="#d97706" strokeWidth="1.5"/>
+        <circle cx="42" cy="38" r="3.5" fill="#78350f"/>
+        <circle cx="58" cy="38" r="3.5" fill="#78350f"/>
+        <path d="M38 50 Q50 62 62 50" stroke="#78350f" fill="none" strokeWidth="3" strokeLinecap="round"/>
+      </svg>
+    ),
+    green: (
+      <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
+        <circle cx="50" cy="40" r="25" fill="#10b981" stroke="#047857" strokeWidth="1.5"/>
+        <circle cx="42" cy="38" r="3" fill="#064e3b"/>
+        <circle cx="58" cy="38" r="3" fill="#064e3b"/>
+      </svg>
+    ),
+    blue: (
+      <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
+        <circle cx="50" cy="40" r="25" fill="#2563eb" stroke="#1d4ed8" strokeWidth="1.5"/>
+        <rect x="35" y="65" width="30" height="35" rx="4" fill="#1d4ed8"/>
+        <circle cx="42" cy="38" r="3.5" fill="#1e3a8a"/>
+        <circle cx="58" cy="38" r="3.5" fill="#1e3a8a"/>
+      </svg>
+    )
+  };
+  return characters[type] || null;
+};
+
+const HATS = [
+  { id: 'white', label: 'หมวกสีขาว', sub: 'ความจริงมีเพียงหนึ่งเดียว', gradient: 'from-slate-50 to-slate-200', guide: 'ข้อมูลที่เป็นกลาง ตัวเลข สถิติ หลีกเลี่ยงความรู้สึก', example: 'ยอดขายลดลง 15% เนื่องจากคู่แข่งเปิดตัวใหม่' },
+  { id: 'red', label: 'หมวกสีแดง', sub: 'ความรู้สึกดีๆที่มีให้กัน', gradient: 'from-red-50 to-red-200', guide: 'สัญชาตญาณและความรู้สึกล้วนๆ ไม่ต้องใช้เหตุผล', example: 'ผมรู้สึกไม่สบายใจกับโปรเจกต์นี้ มันดูเสี่ยง' },
+  { id: 'black', label: 'หมวกสีดำ', sub: 'จะทำไงไม่ให้เกิดขึ้น', gradient: 'from-slate-700 to-slate-900', guide: 'มองหาจุดอ่อน ความเสี่ยง หรืออุปสรรค', example: 'งบประมาณอาจไม่พอหากเกิดความล่าช้า' },
+  { id: 'yellow', label: 'หมวกสีเหลือง', sub: 'มีข้อดี หรือประโยชน์อะไรบ้าง', gradient: 'from-amber-50 to-amber-200', guide: 'มองโลกในแง่ดี หาจุดเด่น ประโยชน์', example: 'นี่เป็นโอกาสที่เราจะเป็นเจ้าแรกในตลาด' },
+  { id: 'green', label: 'หมวกสีเขียว', sub: 'จินตนาการ ควมคิดสร้างสรรค์', gradient: 'from-emerald-50 to-emerald-200', guide: 'คิดนอกกรอบ หาทางเลือกใหม่ๆ ที่สร้างสรรค์', example: 'จะเป็นอย่างไรถ้าเราเปลี่ยนเป็นระบบแบ่งปัน?' },
+  { id: 'blue', label: 'หมวกสีน้ำเงิน', sub: 'กระบวนการ สรุปภาพรวม', gradient: 'from-blue-50 to-blue-200', guide: 'สรุปประเด็น วางแผนขั้นตอนถัดไป', example: 'สรุปแล้วเรามี 3 ทางเลือก ขั้นต่อไปคือโหวต' },
+];
+
+export default function App() {
+  const [user, setUser] = useState(null);
+  const [userData, setUserData] = useState(null);
+  const [globalStats, setGlobalStats] = useState({});
+  const [hatLogs, setHatLogs] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [inputContent, setInputContent] = useState('');
+  const [feedback, setFeedback] = useState(null);
+  
+  // Gemini States
+  const [aiInsight, setAiInsight] = useState(null);
+  const [isGeneratingInsight, setIsGeneratingInsight] = useState(false);
+  const [isRefining, setIsRefining] = useState(false);
+
+  const dbRef = useRef(null);
+  const authRef = useRef(null);
+  const appId = typeof __app_id !== 'undefined' ? __app_id : 'social-six-hats-mobile-v1';
+
+  // --- Gemini API Helpers ---
+  const callGemini = async (prompt, systemInstruction = "") => {
+    let retries = 0;
+    const maxRetries = 5;
+    while (retries < maxRetries) {
+      try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            systemInstruction: { parts: [{ text: systemInstruction }] }
+          })
+        });
+        if (!response.ok) throw new Error('API Error');
+        const data = await response.json();
+        return data.candidates?.[0]?.content?.parts?.[0]?.text;
+      } catch (err) {
+        retries++;
+        await new Promise(r => setTimeout(r, Math.pow(2, retries) * 1000));
+      }
+    }
+    throw new Error("Failed after retries");
+  };
+
+  const handleRefineWithAI = async () => {
+    if (!inputContent.trim()) return;
+    setIsRefining(true);
+    const hat = HATS.find(h => h.id === userData.selectedHatId);
+    try {
+      const refinedText = await callGemini(
+        `ปรับปรุงข้อความนี้ให้ตรงกับบทบาท "${hat.label}": "${inputContent}"`,
+        "คุณเป็นผู้ช่วยปรับปรุงข้อความให้ตรงตามหลัก Six Thinking Hats สั้น กระชับ เป็นธรรมชาติ"
+      );
+      setInputContent(refinedText.trim());
+    } catch (e) {
+      setFeedback({ type: 'error', text: 'AI ไม่สามารถเกลาประโยคได้' });
+    } finally {
+      setIsRefining(false);
+    }
+  };
+
+  const handleGenerateInsight = async () => {
+    if (hatLogs.length === 0) return;
+    setIsGeneratingInsight(true);
+    const hat = HATS.find(h => h.id === userData.selectedHatId);
+    const context = hatLogs.slice(0, 5).map(l => l.content).join("\n- ");
+    
+    try {
+      const insight = await callGemini(
+        `สรุปความเห็นของ "${hat.label}":\n- ${context}`,
+        `คุณเป็นนักสรุปใจความสำคัญ ตอบเป็นข้อสั้นๆ 3 ข้อ และข้อแนะนำ 1 ข้อ`
+      );
+      setAiInsight(insight);
+    } catch (e) {
+      setFeedback({ type: 'error', text: 'AI ไม่สามารถวิเคราะห์ได้' });
+    } finally {
+      setIsGeneratingInsight(false);
+    }
+  };
+
+  // --- Core Firebase Logic ---
+  useEffect(() => {
+    const loadFirebase = async () => {
+      try {
+        const { initializeApp } = await import('https://www.gstatic.com/firebasejs/11.2.0/firebase-app.js');
+        const { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } = await import('https://www.gstatic.com/firebasejs/11.2.0/firebase-auth.js');
+        const { getFirestore, doc, setDoc, onSnapshot, collection, updateDoc, increment, addDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js');
+
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        dbRef.current = { db, doc, setDoc, onSnapshot, collection, updateDoc, increment, addDoc, serverTimestamp };
+
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
+
+        onAuthStateChanged(auth, (u) => {
+          setUser(u);
+          if (!u) setIsLoading(false);
+        });
+      } catch (e) {
+        setIsLoading(false);
+      }
+    };
+    loadFirebase();
+  }, []);
+
+  useEffect(() => {
+    if (!user || !dbRef.current) return;
+    const { db, doc, setDoc, onSnapshot } = dbRef.current;
+    const userRef = doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'stats');
+    const statsRef = doc(db, 'artifacts', appId, 'public', 'data', 'global_stats', 'summary');
+
+    const unsubUser = onSnapshot(userRef, (snap) => {
+      if (snap.exists()) setUserData(snap.data());
+      else {
+        const defaultData = { exp: 0, level: 1, selectedHatId: null };
+        setDoc(userRef, defaultData);
+        setUserData(defaultData);
+      }
+      setIsLoading(false);
+    });
+
+    const unsubStats = onSnapshot(statsRef, (snap) => {
+      if (snap.exists()) setGlobalStats(snap.data());
+    });
+
+    return () => { unsubUser(); unsubStats(); };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user || !userData?.selectedHatId || !dbRef.current) return;
+    const { db, collection, onSnapshot } = dbRef.current;
+    const q = collection(db, 'artifacts', appId, 'public', 'data', 'thinking_logs');
+    return onSnapshot(q, (snap) => {
+      const logs = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        .filter(l => l.hatId === userData.selectedHatId)
+        .sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+      setHatLogs(logs);
+    });
+  }, [user, userData?.selectedHatId]);
+
+  const handleSelectHat = async (hatId) => {
+    if (!user || !dbRef.current) return;
+    setIsLoading(true);
+    const { db, doc, updateDoc, setDoc, increment } = dbRef.current;
+    const userRef = doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'stats');
+    const statsRef = doc(db, 'artifacts', appId, 'public', 'data', 'global_stats', 'summary');
+
+    try {
+      await updateDoc(userRef, { selectedHatId: hatId });
+      await setDoc(statsRef, { [hatId]: increment(1) }, { merge: true });
+    } catch (e) {
+      await setDoc(userRef, { ...userData, selectedHatId: hatId });
+      await setDoc(statsRef, { [hatId]: increment(1) }, { merge: true });
+    }
+    setIsLoading(false);
+  };
+
+  const handleSubmit = async () => {
+    if (!inputContent.trim() || !user || !userData?.selectedHatId || !dbRef.current) return;
+    setIsLoading(true);
+    const { db, collection, addDoc, serverTimestamp, doc, updateDoc, increment } = dbRef.current;
+    
+    try {
+      const hat = HATS.find(h => h.id === userData.selectedHatId);
+      const scoreResult = await callGemini(
+        `ประเมินข้อความนี้: "${inputContent}" ให้คะแนนความเหมาะสมกับ "${hat.label}" (0-15) ตอบแค่ตัวเลข`,
+        "คุณคือระบบให้คะแนนความสอดคล้อง"
+      );
+      const finalScore = parseInt(scoreResult.replace(/\D/g, '')) || 5;
+
+      await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'thinking_logs'), {
+        userId: user.uid,
+        content: inputContent,
+        hatId: userData.selectedHatId,
+        timestamp: serverTimestamp(),
+        score: Math.min(finalScore, 15)
+      });
+
+      const userRef = doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'stats');
+      await updateDoc(userRef, { exp: increment(finalScore) });
+
+      setFeedback({ type: 'success', text: `ส่งแล้ว! ได้รับ ${finalScore} EXP ✨` });
+      setInputContent('');
+      setTimeout(() => setFeedback(null), 3000);
+    } catch (e) {
+      setFeedback({ type: 'error', text: 'เกิดข้อผิดพลาด' });
+    }
+    setIsLoading(false);
+  };
+
+  if (isLoading) return (
+    <div className="fixed inset-0 flex items-center justify-center bg-white z-[100]">
+      <div className="flex flex-col items-center gap-4">
+        <LucideLoader2 className="animate-spin text-indigo-500" size={40} />
+        <span className="text-sm font-bold text-slate-400 animate-pulse">กำลังโหลด...</span>
+      </div>
+    </div>
+  );
+
+  // --- Mobile Select Hat View ---
+  if (!userData?.selectedHatId) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col p-4 pb-12">
+        <header className="py-8 text-center">
+          <h1 className="text-3xl font-black text-slate-900 leading-tight">เลือกหมวก<br/>ความคิดของคุณ</h1>
+          <p className="mt-2 text-slate-500 text-sm font-medium">สวมบทบาทเพื่อเริ่มการวิเคราะห์กลุ่ม</p>
+        </header>
+        
+        <div className="grid grid-cols-1 gap-4 max-w-sm mx-auto w-full">
+          {HATS.map(hat => (
+            <button 
+              key={hat.id} 
+              onClick={() => handleSelectHat(hat.id)}
+              className="flex items-center gap-4 bg-white p-4 rounded-3xl border-2 border-slate-100 active:scale-95 transition-all shadow-sm active:shadow-inner"
+            >
+              <div className={`w-16 h-16 p-3 rounded-2xl bg-gradient-to-br ${hat.gradient} shrink-0`}>
+                <Avatar type={hat.id} />
+              </div>
+              <div className="text-left">
+                <h3 className="font-black text-slate-800">{hat.label}</h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{hat.sub} • {globalStats[hat.id] || 0} คน</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const currentHat = HATS.find(h => h.id === userData.selectedHatId);
+
+  return (
+    <div className="min-h-screen bg-slate-50 pb-24">
+      {/* Mobile Top Nav */}
+      <nav className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 py-3 sticky top-0 z-50 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className={`w-10 h-10 p-2 rounded-xl bg-gradient-to-br ${currentHat?.gradient} border border-slate-200`}>
+            <Avatar type={userData.selectedHatId} />
+          </div>
+          <div>
+            <h2 className="text-sm font-black text-slate-900">{currentHat?.label}</h2>
+            <div className="flex items-center gap-1">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+              <span className="text-[10px] font-bold text-slate-400">ออนไลน์</span>
+            </div>
+          </div>
+        </div>
+        <div className="bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-full text-[10px] font-black border border-indigo-100">
+          {userData.exp} EXP
+        </div>
+      </nav>
+
+      {/* Main Content Area */}
+      <div className="p-4 space-y-4 max-w-lg mx-auto">
+        
+        {/* Guide Card */}
+        <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="p-2.5 rounded-xl bg-amber-50 text-amber-600">
+              <LucideLightbulb size={20} />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-slate-800">แนะนำบทบาท</h3>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed font-medium">{currentHat?.guide}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* AI Insight Card */}
+        {hatLogs.length > 0 && (
+          <div className="bg-gradient-to-br from-indigo-600 to-blue-700 rounded-3xl p-5 text-white shadow-lg overflow-hidden relative">
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <LucideBrainCircuit size={18} />
+                  <span className="text-xs font-black uppercase tracking-wider">AI Insight</span>
+                </div>
+                <button 
+                  onClick={handleGenerateInsight}
+                  disabled={isGeneratingInsight}
+                  className="bg-white/20 hover:bg-white/30 p-2 rounded-xl transition-colors"
+                >
+                  {isGeneratingInsight ? <LucideLoader2 className="animate-spin" size={16} /> : <LucideSparkles size={16} />}
+                </button>
+              </div>
+              
+              {aiInsight ? (
+                <div className="text-xs leading-relaxed font-medium bg-white/10 p-3 rounded-2xl border border-white/10 whitespace-pre-wrap">
+                  {aiInsight}
+                </div>
+              ) : (
+                <p className="text-[10px] text-indigo-100 font-medium">กดปุ่มเพื่อวิเคราะห์ภาพรวมของกลุ่ม</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Input Area */}
+        <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-black text-slate-400 uppercase">พิมพ์ข้อความของคุณ</h3>
+            <button 
+              onClick={handleRefineWithAI}
+              disabled={isRefining || !inputContent.trim()}
+              className="flex items-center gap-1.5 text-[9px] font-black bg-slate-50 text-slate-600 px-3 py-1.5 rounded-full border border-slate-100 active:bg-slate-200"
+            >
+              {isRefining ? <LucideLoader2 className="animate-spin" size={12} /> : <LucideWand2 size={12} />}
+              เกลาคำ
+            </button>
+          </div>
+          
+          <textarea 
+            value={inputContent}
+            onChange={(e) => setInputContent(e.target.value)}
+            placeholder="เขียนมุมมองของคุณที่นี่..."
+            className="w-full h-28 p-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium transition-all"
+          />
+
+          <button 
+            onClick={handleSubmit}
+            disabled={isLoading || !inputContent.trim()}
+            className="w-full py-4 rounded-2xl bg-slate-900 text-white font-black text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all shadow-md"
+          >
+            {isLoading ? <LucideLoader2 className="animate-spin" size={18} /> : <LucideSend size={18} />}
+            ส่งความคิดเห็น
+          </button>
+        </div>
+
+        {/* Feed Area */}
+        <div className="space-y-3 pb-8">
+          <h3 className="text-xs font-black text-slate-400 uppercase px-2 flex items-center gap-2">
+            <LucideHistory size={14} /> ประวัติกลุ่ม ({hatLogs.length})
+          </h3>
+          {hatLogs.map(log => (
+            <div key={log.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-[9px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md">ID: {log.userId?.slice(-4)}</span>
+                <span className="text-[9px] font-black text-indigo-500">AI Score: {log.score}</span>
+              </div>
+              <p className="text-xs text-slate-700 font-medium leading-relaxed">{log.content}</p>
+            </div>
+          ))}
+          {hatLogs.length === 0 && (
+            <div className="text-center py-12">
+               <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <LucideUsers size={24} className="text-slate-300" />
+               </div>
+               <p className="text-xs font-bold text-slate-400">ยังไม่มีข้อมูลในกลุ่มนี้</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Mobile Feedback Toast */}
+      {feedback && (
+        <div className={`fixed bottom-6 left-4 right-4 p-4 rounded-2xl flex items-center gap-3 text-xs font-black shadow-2xl z-[60] animate-in slide-in-from-bottom-10 ${feedback.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}`}>
+          {feedback.type === 'success' ? <LucideCheckCircle size={16} /> : <LucideAlertCircle size={16} />}
+          {feedback.text}
+        </div>
+      )}
+    </div>
+  );
+}
