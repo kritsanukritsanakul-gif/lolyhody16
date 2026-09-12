@@ -1,0 +1,2726 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>US Macro Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg:      #f5f6f8;
+  --surface: #ffffff;
+  --surface2:#f0f1f4;
+  --border:  #e4e6ec;
+  --text:    #1a1d27;
+  --text2:   #5a6077;
+  --text3:   #9098b0;
+  --blue:    #2563eb;
+  --red:     #dc2626;
+  --green:   #16a34a;
+  --amber:   #d97706;
+  --purple:  #7c3aed;
+  --teal:    #0891b2;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'Sarabun', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15px;line-height:1.6}
+
+/* ── HEADER ── */
+header{
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  padding:0 28px;
+  display:flex;align-items:center;justify-content:space-between;
+  height:56px;position:sticky;top:0;z-index:100;
+}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{width:28px;height:28px;background:var(--blue);border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:-.02em}
+.logo-text{font-size:15px;font-weight:600;color:var(--text)}
+.logo-sub{font-size:12px;color:var(--text3);margin-left:4px}
+
+.data-status{
+  display:flex;align-items:center;gap:8px;
+  background:#fef3c7;border:1px solid #fde68a;
+  border-radius:6px;padding:5px 12px;
+  font-size:12px;color:#92400e;
+}
+.status-dot{width:7px;height:7px;border-radius:50%;background:#f59e0b;flex-shrink:0}
+
+/* ── BANNER ── */
+.update-banner{
+  background:#fffbeb;
+  border-bottom:1px solid #fde68a;
+  padding:10px 28px;
+  font-size:13px;color:#78350f;
+  display:flex;align-items:center;gap:10px;
+}
+.update-banner strong{font-weight:600}
+.update-banner a{color:var(--blue);text-decoration:underline;cursor:pointer}
+
+/* ── CONTAINER ── */
+.container{max-width:1160px;margin:0 auto;padding:24px 28px}
+
+/* ── SECTION TITLE ── */
+.section-title{
+  font-size:12px;font-weight:500;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.08em;
+  margin-bottom:14px;margin-top:8px;
+}
+
+/* ── KPI GRID ── */
+.kpi-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
+  gap:12px;margin-bottom:28px;
+}
+.kpi-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:18px 18px 14px;
+  border-left:3px solid var(--kpi-color,var(--border));
+  transition:box-shadow .15s;
+}
+.kpi-card:hover{box-shadow:0 2px 12px rgba(0,0,0,.07)}
+.kpi-label{font-size:12px;color:var(--text3);margin-bottom:6px;font-weight:400}
+.kpi-value{font-size:26px;font-weight:600;font-family:var(--mono);color:var(--kpi-color,var(--text));line-height:1;margin-bottom:8px}
+.kpi-footer{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text3)}
+.kpi-history{display:flex;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+.kpi-history-item{display:flex;flex-direction:column;align-items:center;gap:2px;flex:1}
+.kpi-history-val{font-family:var(--mono);font-size:11px;color:var(--text2);font-weight:500}
+.kpi-history-lbl{font-size:9px;color:var(--text3)}
+.chip{
+  display:inline-flex;align-items:center;gap:3px;
+  font-size:11px;font-weight:500;padding:2px 7px;border-radius:4px;
+}
+.chip-up  {background:#fee2e2;color:#b91c1c}
+.chip-dn  {background:#dcfce7;color:#15803d}
+.chip-neu {background:#dbeafe;color:#1d4ed8}
+
+/* ── TABS ── */
+.tab-bar{
+  display:flex;gap:2px;
+  border-bottom:2px solid var(--border);
+  margin-bottom:22px;
+}
+.tab-btn{
+  background:none;border:none;
+  font-family:var(--sans);font-size:14px;font-weight:500;
+  color:var(--text3);padding:10px 20px;cursor:pointer;
+  border-bottom:2px solid transparent;margin-bottom:-2px;
+  transition:color .15s,border-color .15s;
+}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.active{color:var(--blue);border-bottom-color:var(--blue)}
+.tab-content{display:none}
+.tab-content.active{display:block}
+
+/* ── CHART LAYOUT ── */
+.chart-row{display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:14px}
+.chart-row.two{grid-template-columns:1fr 1fr}
+@media(max-width:720px){.chart-row.two{grid-template-columns:1fr}}
+
+.card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:10px;padding:20px;
+}
+.card-title{
+  font-size:13px;font-weight:600;color:var(--text);
+  margin-bottom:4px;
+}
+.card-sub{font-size:12px;color:var(--text3);margin-bottom:16px}
+.chart-wrap{position:relative;width:100%}
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:14px}
+.leg{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)}
+.leg-line{width:18px;height:2px;border-radius:1px;flex-shrink:0}
+.leg-bar {width:10px;height:10px;border-radius:2px;flex-shrink:0}
+
+/* ── TABLE ── */
+.data-table{width:100%;border-collapse:collapse;font-size:13px}
+.data-table thead th{
+  text-align:left;padding:10px 12px;
+  font-size:11px;font-weight:500;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.06em;
+  border-bottom:2px solid var(--border);
+  background:var(--surface2);position:sticky;top:55px;
+}
+.data-table tbody td{
+  padding:10px 12px;border-bottom:1px solid var(--border);
+  font-family:var(--mono);font-size:12px;
+}
+.data-table tbody tr:hover td{background:var(--bg)}
+.cell-month{font-family:var(--sans);font-weight:500;color:var(--text2)}
+.cell-hot{color:var(--red);font-weight:500}
+.cell-ok{color:var(--green);font-weight:500}
+.cell-warn{color:var(--amber);font-weight:500}
+
+/* ── HOW TO UPDATE ── */
+.how-to{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:10px;padding:22px 24px;margin-top:6px;
+}
+.how-to h3{font-size:15px;font-weight:600;margin-bottom:12px}
+.how-to p{font-size:13px;color:var(--text2);margin-bottom:10px;line-height:1.7}
+.how-to code{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:4px;padding:1px 6px;
+  font-family:var(--mono);font-size:12px;color:var(--blue);
+}
+.sources{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-top:16px}
+.source-link{
+  display:flex;align-items:flex-start;gap:8px;
+  background:var(--bg);border:1px solid var(--border);
+  border-radius:8px;padding:12px 14px;text-decoration:none;color:inherit;
+  transition:border-color .15s;
+}
+.source-link:hover{border-color:var(--blue)}
+.source-icon{font-size:18px;flex-shrink:0}
+.source-name{font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px}
+.source-desc{font-size:11px;color:var(--text3)}
+
+/* ── KPI TOOLTIP ── */
+.kpi-card{cursor:default;position:relative}
+.kpi-tooltip{
+  display:none;position:absolute;z-index:200;
+  bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);
+  width:240px;
+  background:#1a1d27;color:#e8eaf0;
+  border-radius:8px;padding:12px 14px;
+  font-size:12px;line-height:1.6;
+  box-shadow:0 8px 24px rgba(0,0,0,.18);
+  pointer-events:none;
+}
+.kpi-tooltip::after{
+  content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);
+  border:6px solid transparent;border-top-color:#1a1d27;
+}
+.kpi-card:hover .kpi-tooltip{display:block}
+.kpi-tooltip-title{font-weight:600;font-size:12px;margin-bottom:6px;color:#fff}
+.kpi-tooltip-body{color:#9098b0;font-size:11px;line-height:1.65}
+.kpi-tooltip-signal{margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.1);font-size:11px}
+.signal-label{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:#6b7280;margin-bottom:3px}
+.signal-hot{color:#f87171}.signal-ok{color:#4ade80}.signal-neu{color:#60a5fa}
+
+/* ── INDICATOR DETAIL TAB ── */
+.ind-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;margin-bottom:8px}
+.ind-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:10px;padding:0;overflow:hidden;
+}
+.ind-header{
+  padding:16px 20px 14px;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:flex-start;gap:14px;
+}
+.ind-icon{
+  width:38px;height:38px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;flex-shrink:0;
+}
+.ind-name{font-size:14px;font-weight:600;color:var(--text);margin-bottom:2px}
+.ind-abbr{font-size:11px;color:var(--text3);font-family:var(--mono)}
+.ind-body{padding:16px 20px}
+.ind-desc{font-size:13px;color:var(--text2);line-height:1.75;margin-bottom:14px}
+.ind-signals{display:flex;flex-direction:column;gap:6px}
+.signal-row{
+  display:flex;align-items:flex-start;gap:10px;
+  font-size:12px;padding:8px 12px;border-radius:6px;line-height:1.6;
+}
+.signal-row.hot{background:#fef2f2;color:#991b1b}
+.signal-row.ok {background:#f0fdf4;color:#166534}
+.signal-row.watch{background:#fffbeb;color:#92400e}
+.signal-row.info{background:#eff6ff;color:#1e40af}
+.sig-icon{font-size:14px;flex-shrink:0;margin-top:1px}
+.ind-meta{
+  padding:12px 20px;border-top:1px solid var(--border);
+  display:flex;gap:16px;flex-wrap:wrap;
+}
+.meta-item{font-size:11px;color:var(--text3)}
+.meta-item strong{color:var(--text2);font-weight:500}
+
+/* ── CALENDAR ── */
+.cal-month-label{font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;padding:6px 0 10px;margin-top:6px}
+.cal-event{
+  display:flex;align-items:flex-start;gap:14px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:10px;padding:14px 16px;margin-bottom:10px;
+  border-left:4px solid var(--event-color,var(--border));
+  transition:box-shadow .15s;
+}
+.cal-event:hover{box-shadow:0 2px 12px rgba(0,0,0,.07)}
+.cal-event.today{background:#fffbeb;border-color:#fde68a;border-left-color:#f59e0b}
+.cal-event.past{opacity:.5}
+.cal-date{
+  display:flex;flex-direction:column;align-items:center;
+  min-width:44px;text-align:center;flex-shrink:0;
+}
+.cal-day{font-family:var(--mono);font-size:22px;font-weight:600;line-height:1;color:var(--text)}
+.cal-dow{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
+.cal-body{flex:1;min-width:0}
+.cal-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px}
+.cal-meta{display:flex;flex-wrap:wrap;gap:8px;font-size:12px;color:var(--text3);align-items:center}
+.cal-tag{
+  font-size:11px;font-weight:500;padding:2px 8px;border-radius:4px;
+  display:inline-flex;align-items:center;gap:4px;
+}
+.tag-fomc{background:#ede9fe;color:#6d28d9}
+.tag-cpi {background:#fee2e2;color:#b91c1c}
+.tag-nfp {background:#dcfce7;color:#15803d}
+.tag-pce {background:#fef3c7;color:#92400e}
+.tag-gdp {background:#dbeafe;color:#1d4ed8}
+.tag-high{background:#fee2e2;color:#b91c1c}
+.tag-med {background:#fef3c7;color:#92400e}
+.cal-forecast{font-size:12px;color:var(--text2);margin-top:6px}
+.cal-forecast span{font-family:var(--mono);font-weight:500}
+.cal-history{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border)}
+.cal-history-item{display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--surface2);border-radius:6px;padding:5px 10px;min-width:64px;text-align:center}
+.cal-history-date{font-size:10px;color:var(--text3);font-family:var(--mono)}
+.cal-history-val{font-size:12px;font-weight:600;font-family:var(--mono);color:var(--text)}
+.cal-history-badge{font-size:9px;font-weight:600;padding:2px 5px;border-radius:3px;margin-top:1px}
+.badge-beat{background:#dcfce7;color:#15803d}
+.badge-miss{background:#fee2e2;color:#b91c1c}
+.badge-inline{background:#dbeafe;color:#1e40af}
+.cal-history-label{font-size:10px;color:var(--text3);margin-bottom:4px}
+.today-badge{
+  background:#f59e0b;color:#fff;
+  font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;
+  letter-spacing:.04em;
+}
+.cal-filter{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
+
+/* ── LANGUAGE SWITCH ── */
+.lang-switch{display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.lang-btn{
+  font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.04em;
+  padding:6px 12px;border:none;background:var(--surface);color:var(--text3);
+  cursor:pointer;transition:all .15s;
+}
+.lang-btn.active{background:var(--blue);color:#fff}
+.lang-btn:not(.active):hover{color:var(--text)}
+
+/* ── DATA FRESHNESS BANNER ── */
+.freshness-bar{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;
+  padding:10px 16px;margin-bottom:18px;font-size:13px;color:#1e40af;
+}
+.freshness-bar strong{font-weight:700}
+.freshness-bar .sep{color:#93c5fd}
+
+.filter-btn{
+  font-family:var(--sans);font-size:12px;font-weight:500;
+  padding:6px 14px;border-radius:20px;cursor:pointer;
+  border:1px solid var(--border);background:var(--surface);color:var(--text2);
+  transition:all .15s;
+}
+.filter-btn:hover{border-color:var(--blue);color:var(--blue)}
+.filter-btn.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+
+/* ── FOOTER ── */
+footer{
+  border-top:1px solid var(--border);padding:16px 28px;
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:12px;color:var(--text3);flex-wrap:wrap;gap:8px;
+}
+
+@media(max-width:600px){
+  .container{padding:16px}
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  header{padding:0 16px}
+  .tab-btn{padding:10px 14px;font-size:13px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">US</div>
+    <span class="logo-text">Macro Dashboard</span>
+    <span class="logo-sub" data-i18n="logo-sub">สหรัฐอเมริกา</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:14px">
+    <div class="data-status" id="data-status">
+      <div class="status-dot" id="status-dot"></div>
+      <span id="status-text">กำลังเชื่อมต่อ FRED API...</span>
+    </div>
+    <div class="lang-switch">
+      <button class="lang-btn active" id="lang-th" onclick="setLang('th')">TH</button>
+      <button class="lang-btn" id="lang-en" onclick="setLang('en')">EN</button>
+    </div>
+  </div>
+</header>
+
+<div class="update-banner" id="update-banner">
+  🔄 กำลังดึงข้อมูลล่าสุดจาก FRED API ผ่าน Cloudflare Worker — กรุณารอสักครู่...
+</div>
+
+<div class="container">
+
+  <div class="section-title" data-i18n="overview-title">ภาพรวมล่าสุด</div>
+  <div class="freshness-bar" id="freshness-bar">
+    <span data-i18n="data-as-of">📅 ข้อมูล ณ เดือน</span> <strong id="fresh-month">—</strong>
+    <span class="sep">|</span>
+    <span data-i18n="last-fetched">ดึงข้อมูลล่าสุดเมื่อ</span> <strong id="fresh-time">—</strong>
+  </div>
+  <div class="kpi-grid" id="kpi-grid"></div>
+  <div class="kpi-grid" style="margin-top:-18px">
+    <div class="kpi-card" style="--kpi-color:#0891b2">
+      <div class="kpi-label" data-i18n="mkt-real">US 10Y Real Yield (TIPS)</div>
+      <div class="kpi-value" id="ov-real-value">—</div>
+      <div class="kpi-footer"><span class="chip chip-neu" id="ov-real-chip">•</span><span id="ov-real-date">กำลังโหลด...</span></div>
+      <div class="kpi-tooltip">
+        <div class="kpi-tooltip-title" data-i18n="mkt-real">US 10Y Real Yield (TIPS)</div>
+        <div class="kpi-tooltip-body" data-i18n="real-body">อัตราผลตอบแทนพันธบัตรรัฐบาลสหรัฐ 10 ปี แบบปรับเงินเฟ้อแล้ว (TIPS) = Nominal Yield - Break-even Inflation คือผลตอบแทนที่นักลงทุนได้รับจริงหลักหักเงินเฟ้อ</div>
+        <div class="kpi-tooltip-signal signal-watch" data-i18n="real-signal">Real Yield สูง = กดดันทองคำและหุ้นเติบโต | ต่ำหรือติดลบ = หนุนทองคำ</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('inflation')" data-i18n="tab-inflation">เงินเฟ้อ</button>
+    <button class="tab-btn" onclick="switchTab('labor')" data-i18n="tab-labor">ตลาดแรงงาน</button>
+    <button class="tab-btn" onclick="switchTab('annual')" data-i18n="tab-annual">รายปี</button>
+    <button class="tab-btn" onclick="switchTab('table')" data-i18n="tab-table">ตารางข้อมูล</button>
+    <button class="tab-btn" onclick="switchTab('calendar')" data-i18n="tab-calendar">ปฏิทินเศรษฐกิจ</button>
+    <button class="tab-btn" onclick="switchTab('markets')" data-i18n="tab-markets">ตลาดการเงิน</button>
+    <button class="tab-btn" onclick="switchTab('indicators')" data-i18n="tab-indicators">ความหมายตัวชี้วัด</button>
+    <button class="tab-btn" onclick="switchTab('guide')" data-i18n="tab-guide">แหล่งข้อมูลอ้างอิง</button>
+  </div>
+
+  <!-- INFLATION -->
+  <div class="tab-content active" id="tab-inflation">
+    <div class="chart-row">
+      <div class="card">
+        <div class="card-title" data-i18n="chart-main-title">CPI, PCE และ Fed Funds Rate — รายเดือน</div>
+        <div class="card-sub" data-i18n="chart-main-sub">แนวโน้มอัตราเงินเฟ้อเทียบกับทิศทางดอกเบี้ยนโยบาย</div>
+        <div class="chart-wrap" style="height:300px"><canvas id="c-main"></canvas></div>
+        <div class="legend">
+          <div class="leg"><div class="leg-line" style="background:#dc2626"></div>CPI YoY</div>
+          <div class="leg"><div class="leg-line" style="background:#2563eb"></div>Core CPI YoY</div>
+          <div class="leg"><div class="leg-line" style="background:#d97706;border-top:2px dashed #d97706;background:none;width:18px"></div>PCE YoY</div>
+          <div class="leg"><div class="leg-line" style="background:#16a34a;border-top:2px dashed #16a34a;background:none;width:18px"></div>Core PCE YoY</div>
+          <div class="leg"><div class="leg-line" style="background:#7c3aed;border-top:2px dashed #7c3aed;background:none;width:18px"></div>Fed Rate (แกนขวา)</div>
+        </div>
+      </div>
+    </div>
+    <div class="chart-row two">
+      <div class="card">
+        <div class="card-title" data-i18n="chart-cpi-title">CPI vs Core CPI</div>
+        <div class="card-sub" data-i18n="chart-cpi-sub">เงินเฟ้อทั้งหมด vs ไม่รวมอาหาร-พลังงาน</div>
+        <div class="chart-wrap" style="height:200px"><canvas id="c-cpi"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title" data-i18n="chart-pce-title">PCE vs Core PCE</div>
+        <div class="card-sub" data-i18n="chart-pce-sub">ตัวชี้วัดหลักของ Federal Reserve</div>
+        <div class="chart-wrap" style="height:200px"><canvas id="c-pce"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LABOR -->
+  <div class="tab-content" id="tab-labor">
+    <div class="chart-row">
+      <div class="card">
+        <div class="card-title" data-i18n="chart-nfp-title">Non-Farm Payrolls (NFP)</div>
+        <div class="card-sub" data-i18n="chart-nfp-sub">การจ้างงานนอกภาคเกษตร พัน/ตำแหน่ง — สีแดงคือติดลบ</div>
+        <div class="chart-wrap" style="height:250px"><canvas id="c-nfp"></canvas></div>
+      </div>
+    </div>
+    <div class="chart-row two">
+      <div class="card">
+        <div class="card-title" data-i18n="chart-ahe-title">Average Hourly Earnings YoY</div>
+        <div class="card-sub" data-i18n="chart-ahe-sub">ค่าจ้างเฉลี่ยรายชั่วโมง เทียบปีก่อน</div>
+        <div class="chart-wrap" style="height:200px"><canvas id="c-ahe"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title" data-i18n="chart-imp-title">Import Prices YoY</div>
+        <div class="card-sub" data-i18n="chart-imp-sub">ราคานำเข้า เทียบปีก่อน — บ่งบอกแรงกดดันเงินเฟ้อจากต่างประเทศ</div>
+        <div class="chart-wrap" style="height:200px"><canvas id="c-imp"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ANNUAL -->
+  <div class="tab-content" id="tab-annual">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
+      <label for="annual-view-select" style="font-size:13px;font-weight:500;color:var(--text2)" data-i18n="view-label">มุมมอง:</label>
+      <select id="annual-view-select" onchange="onAnnualViewChange()" style="
+        font-family:var(--sans);font-size:13px;font-weight:500;color:var(--text);
+        background:var(--surface);border:1px solid var(--border);border-radius:8px;
+        padding:8px 14px;cursor:pointer;min-width:220px;">
+        <option value="annual" data-i18n-opt="annual-view-annual">📊 รายปี (ค่าเฉลี่ยทั้งปี)</option>
+        <option value="compare" data-i18n-opt="annual-view-compare">🔀 เปรียบเทียบระหว่างปี (รายเดือน)</option>
+      </select>
+      <select id="compare-metric-select" onchange="buildCompareChart()" style="
+        display:none;font-family:var(--sans);font-size:13px;font-weight:500;color:var(--text);
+        background:var(--surface);border:1px solid var(--border);border-radius:8px;
+        padding:8px 14px;cursor:pointer;min-width:180px;">
+        <option value="cpi" data-i18n-opt="metric-cpi">CPI YoY</option>
+        <option value="coreCpi" data-i18n-opt="metric-coreCpi">Core CPI YoY</option>
+        <option value="pce" data-i18n-opt="metric-pce">PCE YoY</option>
+        <option value="corePce" data-i18n-opt="metric-corePce">Core PCE YoY</option>
+        <option value="fed" data-i18n-opt="metric-fed">Fed Funds Rate</option>
+        <option value="nfp" data-i18n-opt="metric-nfp">Non-Farm Payrolls</option>
+        <option value="ahe" data-i18n-opt="metric-ahe">Avg Hourly Earnings</option>
+        <option value="imp" data-i18n-opt="metric-imp">Import Prices</option>
+      </select>
+    </div>
+
+    <!-- Annual averages view -->
+    <div id="annual-view-annual">
+      <div class="chart-row two">
+        <div class="card">
+          <div class="card-title" data-i18n="chart-anncpi-title">CPI & Core CPI รายปี</div>
+          <div class="card-sub" data-i18n="chart-anncpi-sub">ค่าเฉลี่ยทั้งปี 2021–2025</div>
+          <div class="chart-wrap" style="height:220px"><canvas id="c-ann-cpi"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title" data-i18n="chart-annfed-title">Fed Rate (ปลายปี) & Core PCE</div>
+          <div class="card-sub" data-i18n="chart-annfed-sub">การปรับดอกเบี้ยเทียบเงินเฟ้อ PCE</div>
+          <div class="chart-wrap" style="height:220px"><canvas id="c-ann-fed"></canvas></div>
+        </div>
+      </div>
+      <div class="chart-row">
+        <div class="card">
+          <div class="card-title" data-i18n="chart-annnfp-title">Non-Farm Payrolls รายปี</div>
+          <div class="card-sub" data-i18n="chart-annnfp-sub">ค่าเฉลี่ยการจ้างงาน/เดือน (พัน)</div>
+          <div class="chart-wrap" style="height:200px"><canvas id="c-ann-nfp"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Year-over-year comparison view -->
+    <div id="annual-view-compare" style="display:none">
+      <div class="card">
+        <div class="card-title" id="compare-title">เปรียบเทียบ CPI YoY รายเดือน — 2024 vs 2025 vs 2026</div>
+        <div class="card-sub">แต่ละเส้นคือ 1 ปี เพื่อดูว่าช่วงเวลาเดียวกันของแต่ละปีต่างกันอย่างไร</div>
+        <div class="chart-wrap" style="height:320px"><canvas id="c-compare"></canvas></div>
+        <div class="legend" id="compare-legend"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABLE -->
+  <div class="tab-content" id="tab-table">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+      <button onclick="exportTableToExcel()" style="
+        display:flex;align-items:center;gap:6px;
+        font-family:var(--sans);font-size:13px;font-weight:500;color:#fff;
+        background:#16a34a;border:none;border-radius:8px;
+        padding:9px 16px;cursor:pointer;transition:opacity .15s;"
+        onmouseover="this.style.opacity=0.85" onmouseout="this.style.opacity=1">
+        📊 <span data-i18n="export-excel">Export เป็น Excel</span>
+      </button>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th data-i18n="th-month">เดือน</th><th>CPI YoY</th><th data-i18n="th-corecpi">Core CPI</th>
+            <th>PCE YoY</th><th data-i18n="th-corepce">Core PCE</th><th data-i18n="th-fedrate">Fed Rate</th>
+            <th data-i18n="th-nfp">NFP (พัน)</th><th>AHE YoY</th><th data-i18n="th-imp">Import Prices</th>
+            <th data-i18n="th-real">10Y Real Yield</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- CALENDAR -->
+  <div class="tab-content" id="tab-calendar">
+    <div id="cal-status-banner" class="update-banner" style="border-radius:8px;margin-bottom:14px;background:#eff6ff;border-color:#bfdbfe;color:#1e40af">
+      🔄 กำลังโหลดปฏิทินจาก Finnhub API...
+    </div>
+    <div class="cal-filter">
+      <button class="filter-btn active" onclick="filterCal('all',this)" data-i18n="cal-all">ทั้งหมด</button>
+      <button class="filter-btn" onclick="filterCal('FOMC',this)" data-i18n="cal-fomc">🏦 FOMC</button>
+      <button class="filter-btn" onclick="filterCal('CPI',this)" data-i18n="cal-cpi">🛒 CPI</button>
+      <button class="filter-btn" onclick="filterCal('NFP',this)" data-i18n="cal-nfp">👷 Jobs Report</button>
+      <button class="filter-btn" onclick="filterCal('PCE',this)" data-i18n="cal-pce">💳 PCE</button>
+      <button class="filter-btn" onclick="filterCal('GDP',this)" data-i18n="cal-gdp">📈 GDP</button>
+      <button class="filter-btn" onclick="filterCal('IMP',this)" data-i18n="cal-imp">🚢 Import Prices</button>
+    </div>
+    <div id="cal-list"></div>
+  </div>
+
+  <!-- MARKETS -->
+  <div class="tab-content" id="tab-markets">
+    <div class="update-banner" style="border-radius:8px;margin-bottom:18px;background:#f0fdf4;border-color:#bbf7d0;color:#166534">
+      🟢 <strong>Gold</strong> — GoldAPI.io &nbsp;|&nbsp;
+      <strong>S&P 500 & Nasdaq</strong> — Finnhub &nbsp;|&nbsp;
+      <strong>10Y Treasury Yield</strong> — FRED API &nbsp;|&nbsp;
+      อัปเดตทุกครั้งที่เปิดไฟล์
+    </div>
+    <div class="kpi-grid">
+      <div class="kpi-card" style="--kpi-color:#7c3aed">
+        <div class="kpi-label" data-i18n="mkt-bond">US 10-Year Treasury Yield</div>
+        <div class="kpi-value" id="mkt-dgs10-value">4.57%</div>
+        <div class="kpi-footer"><span class="chip chip-up">▲</span><span id="mkt-dgs10-date">ใกล้จุดสูงสุดรอบ 2 สัปดาห์ (snapshot)</span></div>
+        <div class="kpi-tooltip">
+          <div class="kpi-tooltip-title">Bond Yield (10Y) — Nominal</div>
+          <div class="kpi-tooltip-body">อัตราผลตอบแทนพันธบัตรรัฐบาลสหรัฐ 10 ปี แบบ nominal สะท้อนต้นทุนการกู้ยืมระยะยาวและความคาดหวังเงินเฟ้อ/ดอกเบี้ยในอนาคต</div>
+          <div class="kpi-tooltip-signal signal-watch">ตลาดเริ่มคาดว่า Fed อาจปรับขึ้นจาก 3.75% → 4.00% ในการประชุม ธ.ค.</div>
+        </div>
+      </div>
+      <div class="kpi-card" style="--kpi-color:#0891b2">
+        <div class="kpi-label" data-i18n="mkt-real">US 10Y Real Yield (TIPS)</div>
+        <div class="kpi-value" id="mkt-real-value">—</div>
+        <div class="kpi-footer"><span class="chip chip-neu" id="mkt-real-chip">•</span><span id="mkt-real-date">กำลังโหลด...</span></div>
+        <div class="kpi-tooltip">
+          <div class="kpi-tooltip-title" data-i18n="mkt-real">US 10Y Real Yield (TIPS)</div>
+          <div class="kpi-tooltip-body" data-i18n="real-body">อัตราผลตอบแทนพันธบัตรรัฐบาลสหรัฐ 10 ปี แบบปรับเงินเฟ้อแล้ว (TIPS) = Nominal Yield - Break-even Inflation คือผลตอบแทนที่นักลงทุนได้รับจริงหลังหักเงินเฟ้อ</div>
+          <div class="kpi-tooltip-signal signal-watch" data-i18n="real-signal">Real Yield สูง = กดดันทองคำและหุ้นเติบโต | ต่ำหรือติดลบ = หนุนทองคำ</div>
+        </div>
+      </div>
+      <div class="kpi-card" style="--kpi-color:#d97706">
+        <div class="kpi-label" data-i18n="mkt-gold">Gold (XAU/USD)</div>
+        <div class="kpi-value" id="mkt-gold-value">$4,260</div>
+        <div class="kpi-footer"><span class="chip" id="mkt-gold-chip">•</span><span id="mkt-gold-sub">กำลังโหลด...</span></div>
+        <div class="kpi-tooltip">
+          <div class="kpi-tooltip-title">Gold (XAU/USD)</div>
+          <div class="kpi-tooltip-body">ราคาทองคำ สินทรัพย์ปลอดภัย (safe haven) เคลื่อนไหวสวนทางดอลลาร์และอัตราดอกเบี้ยจริง มักพุ่งขึ้นช่วงวิกฤตหรือเงินเฟ้อสูง</div>
+          <div class="kpi-tooltip-signal signal-info" id="mkt-gold-signal">ดึงข้อมูลจาก Twelve Data</div>
+        </div>
+      </div>
+      <div class="kpi-card" style="--kpi-color:#2563eb">
+        <div class="kpi-label" data-i18n="mkt-sp500">S&P 500 Index <span style="font-size:10px;opacity:.7">(SPY ETF)</span></div>
+        <div class="kpi-value" id="mkt-sp500-value">7,383.74</div>
+        <div class="kpi-footer"><span class="chip" id="mkt-sp500-chip">•</span><span id="mkt-sp500-sub">กำลังโหลด...</span></div>
+        <div class="kpi-tooltip">
+          <div class="kpi-tooltip-title">S&P 500 Index (แสดงผ่าน SPY ETF)</div>
+          <div class="kpi-tooltip-body">ดัชนีหุ้น 500 บริษัทใหญ่ที่สุดในสหรัฐ — ราคาที่แสดงคือ <strong>SPY ETF</strong> (SPDR S&P 500 ETF Trust) ซึ่งสะท้อน S&P 500 ได้ใกล้เคียงมาก เนื่องจาก Finnhub free plan ไม่รองรับ index โดยตรง</div>
+          <div class="kpi-tooltip-signal signal-hot" id="mkt-sp500-signal">ดึงข้อมูลจาก Finnhub (SPY)</div>
+        </div>
+      </div>
+      <div class="kpi-card" style="--kpi-color:#16a34a">
+        <div class="kpi-label" data-i18n="mkt-nasdaq">Nasdaq 100 <span style="font-size:10px;opacity:.7">(QQQ ETF)</span></div>
+        <div class="kpi-value" id="mkt-nasdaq-value">25,709.43</div>
+        <div class="kpi-footer"><span class="chip" id="mkt-nasdaq-chip">•</span><span id="mkt-nasdaq-sub">กำลังโหลด...</span></div>
+        <div class="kpi-tooltip">
+          <div class="kpi-tooltip-title">Nasdaq 100 (แสดงผ่าน QQQ ETF)</div>
+          <div class="kpi-tooltip-body">ดัชนีหุ้นกลุ่มเทคโนโลยีและบริษัทเติบโตสูง — ราคาที่แสดงคือ <strong>QQQ ETF</strong> (Invesco QQQ Trust) ซึ่งสะท้อน Nasdaq 100 ได้ใกล้เคียงมาก อ่อนไหวต่อ bond yield มากกว่า S&P 500</div>
+          <div class="kpi-tooltip-signal signal-hot" id="mkt-nasdaq-signal">ดึงข้อมูลจาก Finnhub (QQQ)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title" id="yield-chart-title">📈 10Y Nominal Yield / Real Yield / Breakeven Inflation — รายเดือน</div>
+      <div class="card-sub" id="yield-chart-sub">เปรียบเทียบ 3 ตัวชี้วัดตลาดพันธบัตรที่สำคัญ | กดที่ Legend เพื่อซ่อน/แสดง</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px" id="yield-legend"></div>
+      <div style="position:relative;height:300px"><canvas id="c-yield"></canvas></div>
+      <div style="font-size:11px;color:var(--text3);margin-top:8px">
+        <strong>Nominal Yield</strong> = ผลตอบแทนพันธบัตร 10 ปี ทั่วไป &nbsp;|&nbsp;
+        <strong>Real Yield</strong> = Nominal หักเงินเฟ้อ (TIPS) &nbsp;|&nbsp;
+        <strong>Breakeven</strong> = ความคาดหวังเงินเฟ้อของตลาด (Nominal - Real)
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title" id="gold-chart-title">🥇 Gold (XAU/USD) — ราคาปิดรายเดือน</div>
+      <div class="card-sub" id="gold-chart-sub">ราคาทองคำ USD/Troy Oz รายเดือน (ราคาปิด) | ข้อมูลจาก Twelve Data (XAU/USD)</div>
+      <div style="position:relative;height:260px"><canvas id="c-gold-monthly"></canvas></div>
+      <div style="font-size:11px;color:var(--text3);margin-top:6px" id="gold-chart-note">ราคาแสดงเป็น USD ต่อทรอยออนซ์ (Troy oz) | กราฟใช้ราคาปิดสิ้นเดือน</div>
+    </div>
+
+  </div>
+
+  <!-- INDICATORS -->
+  <div class="tab-content" id="tab-indicators">
+    <div class="ind-grid" id="ind-grid">
+
+      <div class="ind-card">
+        <div class="ind-header">
+          <div class="ind-icon" style="background:#ede9fe">🏦</div>
+          <div>
+            <div class="ind-name">Fed Funds Rate</div>
+            <div class="ind-abbr">อัตราดอกเบี้ยนโยบาย — Federal Reserve</div>
+          </div>
+        </div>
+        <div class="ind-body">
+          <div class="ind-desc">
+            อัตราดอกเบี้ยที่ธนาคารกลางสหรัฐ (Fed) กำหนดให้ธนาคารพาณิชย์คิดดอกเบี้ยกันเองในตลาดเงินข้ามคืน ถือเป็น <strong>เครื่องมือหลักในการควบคุมเศรษฐกิจ</strong> เมื่อ Fed ขึ้นดอกเบี้ย ต้นทุนการกู้ยืมทั่วระบบสูงขึ้น ชะลอการใช้จ่ายและเงินเฟ้อ เมื่อลดดอกเบี้ย กระตุ้นเศรษฐกิจและการลงทุน
+          </div>
+          <div class="ind-signals">
+            <div class="signal-row hot"><span class="sig-icon">🔴</span><span><strong>ระวัง:</strong> ดอกเบี้ยสูงนาน → เสี่ยงเศรษฐกิจถดถอย สินเชื่อแพง ตลาดหุ้นกดดัน</span></div>
+            <div class="signal-row ok"><span class="sig-icon">🟢</span><span><strong>ดี:</strong> ดอกเบี้ยลด → ต้นทุนกู้ยืมลด กระตุ้นการลงทุนและการบริโภค</span></div>
+            <div class="signal-row info"><span class="sig-icon">💡</span><span><strong>ติดตาม:</strong> การประชุม FOMC 8 ครั้ง/ปี — ดู dot plot และ forward guidance</span></div>
+          </div>
+        </div>
+        <div class="ind-meta">
+          <div class="meta-item">เผยแพร่โดย <strong>Federal Reserve</strong></div>
+          <div class="meta-item">ระดับ neutral <strong>~2.5–3.0%</strong></div>
+          <div class="meta-item">ปัจจุบัน <strong>3.75%</strong></div>
+        </div>
+      </div>
+
+      <div class="ind-card">
+        <div class="ind-header">
+          <div class="ind-icon" style="background:#fee2e2">🛒</div>
+          <div>
+            <div class="ind-name">Consumer Price Index (CPI)</div>
+            <div class="ind-abbr">ดัชนีราคาผู้บริโภค — YoY %</div>
+          </div>
+        </div>
+        <div class="ind-body">
+          <div class="ind-desc">
+            วัดการเปลี่ยนแปลงราคาสินค้าและบริการที่ครัวเรือนซื้อในชีวิตประจำวัน ครอบคลุมหมวดหมู่หลักกว่า 200 รายการ ได้แก่ อาหาร พลังงาน ที่อยู่อาศัย การขนส่ง สุขภาพ เป็นตัวชี้วัดเงินเฟ้อที่ <strong>สาธารณชนรับรู้มากที่สุด</strong> และใช้ปรับค่าแรง สวัสดิการสังคม และสัญญาต่าง ๆ
+          </div>
+          <div class="ind-signals">
+            <div class="signal-row hot"><span class="sig-icon">🔴</span><span><strong>ระวัง:</strong> CPI &gt; 3% ต่อเนื่อง → ซื้อของแพงขึ้น กำลังซื้อลด กดดัน Fed ขึ้นดอกเบี้ย</span></div>
+            <div class="signal-row ok"><span class="sig-icon">🟢</span><span><strong>ดี:</strong> CPI อยู่ที่ 2–2.5% → เงินเฟ้อในระดับเป้าหมาย เศรษฐกิจสมดุล</span></div>
+            <div class="signal-row watch"><span class="sig-icon">⚠️</span><span><strong>จับตา:</strong> หมวดที่อยู่อาศัย (Shelter) มีน้ำหนัก ~33% ใน CPI มักเคลื่อนไหวช้ากว่าตลาดจริง</span></div>
+          </div>
+        </div>
+        <div class="ind-meta">
+          <div class="meta-item">เผยแพร่โดย <strong>BLS</strong></div>
+          <div class="meta-item">เป้าหมาย Fed <strong>~2%</strong></div>
+          <div class="meta-item">ออกทุก <strong>ต้นเดือน</strong></div>
+        </div>
+      </div>
+
+      <div class="ind-card">
+        <div class="ind-header">
+          <div class="ind-icon" style="background:#dbeafe">🎯</div>
+          <div>
+            <div class="ind-name">Core CPI</div>
+            <div class="ind-abbr">ดัชนีราคาผู้บริโภคพื้นฐาน — ไม่รวมอาหารและพลังงาน</div>
+          </div>
+        </div>
+        <div class="ind-body">
+          <div class="ind-desc">
+            CPI ที่ตัดหมวดอาหารสดและพลังงาน (น้ำมัน ก๊าซ) ออก เนื่องจากสองหมวดนี้มีความผันผวนสูงจากปัจจัยฤดูกาลและภูมิรัฐศาสตร์ Core CPI จึง <strong>สะท้อนแรงกดดันเงินเฟ้อพื้นฐาน</strong> ที่ถาวรกว่า นักวิเคราะห์และ Fed ใช้ตัวนี้ประเมินทิศทางนโยบายการเงินระยะกลาง
+          </div>
+          <div class="ind-signals">
+            <div class="signal-row hot"><span class="sig-icon">🔴</span><span><strong>ระวัง:</strong> Core CPI ไม่ยอมลด → เงินเฟ้อฝังรากลึก Fed ต้องคงดอกเบี้ยสูงนาน</span></div>
+            <div class="signal-row ok"><span class="sig-icon">🟢</span><span><strong>ดี:</strong> Core CPI ลงสู่ 2–2.5% → ส่งสัญญาณว่า Fed สามารถลดดอกเบี้ยได้</span></div>
+            <div class="signal-row info"><span class="sig-icon">💡</span><span><strong>เทียบกับ CPI:</strong> ถ้า CPI สูงแต่ Core ต่ำ → เป็นเพราะราคาพลังงาน ไม่ใช่เงินเฟ้อโครงสร้าง</span></div>
+          </div>
+        </div>
+        <div class="ind-meta">
+          <div class="meta-item">เผยแพร่โดย <strong>BLS</strong></div>
+          <div class="meta-item">เป้าหมาย Fed <strong>~2%</strong></div>
+          <div class="meta-item">ออกพร้อม <strong>CPI</strong></div>
+        </div>
+      </div>
+
+      <div class="ind-card">
+        <div class="ind-header">
+          <div class="ind-icon" style="background:#fef3c7">💳</div>
+          <div>
+            <div class="ind-name">PCE Price Index</div>
+            <div class="ind-abbr">Personal Consumption Expenditures — YoY %</div>
+          </div>
+        </div>
+        <div class="ind-body">
+          <div class="ind-desc">
+            วัดการเปลี่ยนแปลงราคาสินค้าและบริการที่ผู้บริโภคจ่ายจริง ครอบคลุมทั้งที่จ่ายเอง และที่จ่ายแทน (เช่น ประกันสุขภาพจากนายจ้าง) PCE ต่างจาก CPI ตรงที่ <strong>ปรับ basket สินค้าได้ตามพฤติกรรมจริง</strong> Fed ใช้ตัวนี้เป็นเกณฑ์หลักกำหนดเป้าเงินเฟ้อ 2%
+          </div>
+          <div class="ind-signals">
+            <div class="signal-row hot"><span class="sig-icon">🔴</span><span><strong>ระวัง:</strong> PCE &gt; 2.5% ต่อเนื่อง → Fed มีเหตุผลคงหรือขึ้นดอกเบี้ย</span></div>
+            <div class="signal-row ok"><span class="sig-icon">🟢</span><span><strong>ดี:</strong> PCE ใกล้ 2% → บรรลุเป้า Fed มีพื้นที่ลดดอกเบี้ย</span></div>
+            <div class="signal-row info"><span class="sig-icon">💡</span><span><strong>vs CPI:</strong> PCE มักต่ำกว่า CPI ~0.3–0.5% เพราะน้ำหนักสุขภาพและการศึกษาต่างกัน</span></div>
+          </div>
+        </div>
+        <div class="ind-meta">
+          <div class="meta-item">เผยแพร่โดย <strong>BEA</strong></div>
+          <div class="meta-item">เป้าหมาย Fed <strong>2.0%</strong></div>
+          <div class="meta-item">ออกทุก <strong>สิ้นเดือน</strong></div>
+        </div>
+      </div>
+
+      <div class="ind-card">
+        <div class="ind-header">
+          <div class="ind-icon" style="background:#dcfce7">🎯</div>
+          <div>
+            <div class="ind-name">Core PCE Price Index</div>
+            <div class="ind-abbr">PCE พื้นฐาน — ไม่รวมอาหารและพลังงาน</div>
+          </div>
+        </div>
+        <div class="ind-body">
+          <div class="ind-desc">
+            ตัวชี้วัดที่ <strong>Fed ให้ความสำคัญสูงสุด</strong> ในการตัดสินใจนโยบายการเงิน เป็น PCE ที่ตัดราคาอาหารและพลังงานออก ทำให้สะท้อนแนวโน้มเงินเฟ้อระยะยาวได้แม่นยำที่สุด ประธาน Fed มักอ้างอิงตัวเลขนี้โดยตรงในแถลงการณ์
+          </div>
+          <div class="ind-signals">
+            <div class="signal-row hot"><span class="sig-icon">🔴</span><span><strong>ระวัง:</strong> Core PCE &gt; 2.5% → Fed ยังไม่มั่นใจ อาจชะลอหรือย้อนกลับการลดดอกเบี้ย</span></div>
+            <div class="signal-row ok"><span class="sig-icon">🟢</span><span><strong>ดี:</strong> Core PCE ลงสู่ 2% → Fed มีความมั่นใจสูงว่าเงินเฟ้ออยู่ในเป้า</span></div>
+            <div class="signal-row watch"><span class="sig-icon">⚠️</span><span><strong>จับตา:</strong> ดู Super Core PCE (บริการไม่รวมที่อยู่อาศัย) เป็นตัวชี้นำที่ละเอียดกว่า</span></div>
+          </div>
+        </div>
+        <div class="ind-meta">
+          <div class="meta-item">เผยแพร่โดย <strong>BEA</strong></div>
+          <div class="meta-item">เป้าหมาย Fed <strong>2.0%</strong> (ตัวนี้)</div>
+          <div class="meta-item">ออกทุก <strong>สิ้นเดือน</strong></div>
+        </div>
+      </div>
+
+      <div class="ind-card">
+        <div class="ind-header">
+          <div class="ind-icon" style="background:#ccfbf1">👷</div>
+          <div>
+            <div class="ind-name">Non-Farm Payrolls (NFP)</div>
+            <div class="ind-abbr">การจ้างงานนอกภาคเกษตร — รายเดือน</div>
+          </div>
+        </div>
+        <div class="ind-body">
+          <div class="ind-desc">
+            จำนวนตำแหน่งงานใหม่ที่เพิ่มขึ้นในภาคธุรกิจ รัฐบาล และอุตสาหกรรม ยกเว้นเกษตรกรรม ทหาร และแรงงานอิสระ เป็นรายงานที่ <strong>ตลาดจับตามองมากที่สุดในโลก</strong> ออกทุกวันศุกร์แรกของเดือน ตัวเลขที่สูงแสดงว่าเศรษฐกิจยังแข็งแกร่ง แต่อาจกดดันเงินเฟ้อผ่านค่าแรง
+          </div>
+          <div class="ind-signals">
+            <div class="signal-row hot"><span class="sig-icon">🔴</span><span><strong>ระวัง:</strong> NFP ติดลบ → ระวังเศรษฐกิจถดถอย; NFP สูงมาก (&gt;300K) → Fed อาจขึ้นดอกเบี้ย</span></div>
+            <div class="signal-row ok"><span class="sig-icon">🟢</span><span><strong>ดี:</strong> NFP +150–200K/เดือน → ตลาดแรงงานสมดุล ไม่ร้อนเกินไป</span></div>
+            <div class="signal-row info"><span class="sig-icon">💡</span><span><strong>ดูประกอบ:</strong> Unemployment Rate และ Labor Force Participation Rate</span></div>
+          </div>
+        </div>
+        <div class="ind-meta">
+          <div class="meta-item">เผยแพร่โดย <strong>BLS</strong></div>
+          <div class="meta-item">ระดับปกติ <strong>+150–250K</strong></div>
+          <div class="meta-item">ออกทุก <strong>ศุกร์แรกของเดือน</strong></div>
+        </div>
+      </div>
+
+      <div class="ind-card">
+        <div class="ind-header">
+          <div class="ind-icon" style="background:#f0fdf4">💰</div>
+          <div>
+            <div class="ind-name">Average Hourly Earnings (AHE)</div>
+            <div class="ind-abbr">ค่าจ้างเฉลี่ยรายชั่วโมง — YoY %</div>
+          </div>
+        </div>
+        <div class="ind-body">
+          <div class="ind-desc">
+            อัตราการเติบโตของค่าแรงเฉลี่ยรายชั่วโมงของแรงงานเอกชน เทียบปีก่อน เป็นตัวชี้วัด <strong>แรงกดดันเงินเฟ้อจากต้นทุนแรงงาน</strong> ค่าแรงที่สูงขึ้นหมายถึงธุรกิจมีต้นทุนสูงขึ้น มักถูกส่งต่อเป็นราคาสินค้า ขณะเดียวกันก็บ่งบอกกำลังซื้อผู้บริโภค
+          </div>
+          <div class="ind-signals">
+            <div class="signal-row hot"><span class="sig-icon">🔴</span><span><strong>ระวัง:</strong> AHE &gt; 4% ต่อเนื่อง → ค่าแรงเร่งตัวเกินผลิตภาพ เสี่ยงเงินเฟ้อจากต้นทุน (wage-price spiral)</span></div>
+            <div class="signal-row ok"><span class="sig-icon">🟢</span><span><strong>ดี:</strong> AHE 3–3.5% → ค่าแรงเพิ่มสอดคล้องกับผลิตภาพ เศรษฐกิจสมดุล</span></div>
+            <div class="signal-row watch"><span class="sig-icon">⚠️</span><span><strong>จับตา:</strong> ดูร่วมกับ NFP — ค่าแรงสูง + งานเยอะ = ตลาดแรงงานร้อนแรง</span></div>
+          </div>
+        </div>
+        <div class="ind-meta">
+          <div class="meta-item">เผยแพร่โดย <strong>BLS</strong></div>
+          <div class="meta-item">ระดับสมดุล <strong>~3–3.5% YoY</strong></div>
+          <div class="meta-item">ออกพร้อม <strong>NFP</strong></div>
+        </div>
+      </div>
+
+      <div class="ind-card">
+        <div class="ind-header">
+          <div class="ind-icon" style="background:#fef9c3">🚢</div>
+          <div>
+            <div class="ind-name">Import Prices</div>
+            <div class="ind-abbr">ดัชนีราคานำเข้า — YoY %</div>
+          </div>
+        </div>
+        <div class="ind-body">
+          <div class="ind-desc">
+            วัดการเปลี่ยนแปลงราคาสินค้าที่สหรัฐฯ นำเข้าจากต่างประเทศ เทียบปีก่อน เป็นตัวบ่งชี้ <strong>แรงกดดันเงินเฟ้อจากภายนอกประเทศ</strong> ได้รับอิทธิพลจากค่าเงินดอลลาร์ ราคาน้ำมันโลก ห่วงโซ่อุปทาน และนโยบายภาษีนำเข้า สะท้อนเงินเฟ้อก่อนที่จะถึงมือผู้บริโภค
+          </div>
+          <div class="ind-signals">
+            <div class="signal-row hot"><span class="sig-icon">🔴</span><span><strong>ระวัง:</strong> Import Prices สูงขึ้นเร็ว → ต้นทุนนำเข้าแพง กดดัน CPI ตามมา 1–3 เดือน</span></div>
+            <div class="signal-row ok"><span class="sig-icon">🟢</span><span><strong>ดี:</strong> Import Prices ติดลบหรือทรงตัว → ดอลลาร์แข็ง/สินค้าโลกถูกลง ช่วยลดเงินเฟ้อ</span></div>
+            <div class="signal-row watch"><span class="sig-icon">⚠️</span><span><strong>จับตา:</strong> ภาษีนำเข้า (tariffs) ผลักราคาขึ้นโดยตรง ดูนโยบายการค้าประกอบ</span></div>
+          </div>
+        </div>
+        <div class="ind-meta">
+          <div class="meta-item">เผยแพร่โดย <strong>BLS</strong></div>
+          <div class="meta-item">ชี้นำ CPI ล่วงหน้า <strong>1–3 เดือน</strong></div>
+          <div class="meta-item">ออกทุก <strong>กลางเดือน</strong></div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="card" style="margin-top:6px">
+      <div class="card-title" id="ind-chain-title" style="margin-bottom:8px">🔗 ความสัมพันธ์ระหว่างตัวชี้วัด</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.9" id="ind-chain">
+        <strong style="color:var(--text)">ห่วงโซ่เงินเฟ้อ:</strong> Import Prices ↑ → ต้นทุนธุรกิจสูงขึ้น → CPI/PCE ↑ → Fed ขึ้นดอกเบี้ย → การบริโภคชะลอ → เงินเฟ้อลด<br>
+        <strong style="color:var(--text)">ห่วงโซ่แรงงาน:</strong> NFP แข็งแกร่ง → AHE ↑ → กำลังซื้อสูง → Demand-pull Inflation → Core CPI/PCE ↑<br>
+        <strong style="color:var(--text)">เป้าหมาย Fed:</strong> ต้องการ Core PCE ที่ 2% + ตลาดแรงงานสมดุล (full employment) — สองเป้าหมายนี้มักขัดกันในช่วงที่เศรษฐกิจร้อนแรง
+      </div>
+    </div>
+  </div>
+
+  <!-- GUIDE -->
+  <div class="tab-content" id="tab-guide">
+    <div class="how-to">
+      <h3 id="source-h3">🔗 แหล่งข้อมูลอ้างอิง</h3>
+      <p id="source-sub" style="margin-bottom:14px">ข้อมูลเผยแพร่ตามตาราง Economic Calendar ทุกเดือน</p>
+      <div class="sources">
+        <a class="source-link" href="https://www.bls.gov/cpi/" target="_blank">
+          <span class="source-icon">📊</span>
+          <div><div class="source-name">BLS — CPI</div><div class="source-desc source-desc-cpi">CPI, Core CPI, Import Prices<br>ออกทุก ~ต้นเดือน</div></div>
+        </a>
+        <a class="source-link" href="https://www.bea.gov/data/personal-consumption-expenditures-price-index" target="_blank">
+          <span class="source-icon">📈</span>
+          <div><div class="source-name">BEA — PCE</div><div class="source-desc source-desc-pce">PCE, Core PCE<br>ออกทุก ~สิ้นเดือน</div></div>
+        </a>
+        <a class="source-link" href="https://www.federalreserve.gov/monetarypolicy/openmarket.htm" target="_blank">
+          <span class="source-icon">🏦</span>
+          <div><div class="source-name">Federal Reserve</div><div class="source-desc source-desc-fed">Fed Funds Rate<br>ประชุม FOMC 8 ครั้ง/ปี</div></div>
+        </a>
+        <a class="source-link" href="https://www.bls.gov/news.release/empsit.nr0.htm" target="_blank">
+          <span class="source-icon">👷</span>
+          <div><div class="source-name">BLS — Employment</div><div class="source-desc source-desc-emp">NFP, Avg Hourly Earnings<br>Jobs Report วันศุกร์แรกของเดือน</div></div>
+        </a>
+        <a class="source-link" href="https://tradingeconomics.com/united-states/indicators" target="_blank">
+          <span class="source-icon">🌐</span>
+          <div><div class="source-name">Trading Economics</div><div class="source-desc source-desc-te">รวมทุกตัวชี้วัดในที่เดียว<br>ดูได้ง่าย พร้อมปฏิทิน</div></div>
+        </a>
+        <a class="source-link" href="https://fred.stlouisfed.org/" target="_blank">
+          <span class="source-icon">📉</span>
+          <div><div class="source-name">FRED — St. Louis Fed</div><div class="source-desc source-desc-fred">ข้อมูลย้อนหลังครบถ้วน<br>ดาวน์โหลด CSV ได้</div></div>
+        </a>
+        <a class="source-link" href="https://www.investing.com/economic-calendar/" target="_blank">
+          <span class="source-icon">📅</span>
+          <div><div class="source-name">Investing.com</div><div class="source-desc source-desc-inv">ปฏิทินเศรษฐกิจ Forecast/Actual<br>อัปเดตรายวัน</div></div>
+        </a>
+        <a class="source-link" href="https://finnhub.io" target="_blank">
+          <span class="source-icon">💹</span>
+          <div><div class="source-name">Finnhub</div><div class="source-desc source-desc-fh">S&amp;P 500 (SPY), Nasdaq (QQQ)<br>Real-time via API</div></div>
+        </a>
+        <a class="source-link" href="https://www.goldapi.io" target="_blank">
+          <span class="source-icon">🥇</span>
+          <div><div class="source-name">GoldAPI.io</div><div class="source-desc source-desc-gold">Gold (XAU/USD)<br>Real-time via API</div></div>
+        </a>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <span>US Macro Dashboard — ข้อมูลจาก BLS, BEA, Federal Reserve</span>
+  <span id="footer-ts"></span>
+</footer>
+
+<script>
+// ══════════════════════════════════════════════
+//  DATA — แก้ตรงนี้เมื่อมีตัวเลขใหม่
+//  เพิ่มตัวเลขต่อท้าย array และเพิ่มชื่อเดือนใน MONTHS
+// ══════════════════════════════════════════════
+const MONTHS = [
+  'ม.ค. 24','ก.พ. 24','มี.ค. 24','เม.ย. 24','พ.ค. 24','มิ.ย. 24',
+  'ก.ค. 24','ส.ค. 24','ก.ย. 24','ต.ค. 24','พ.ย. 24','ธ.ค. 24',
+  'ม.ค. 25','ก.พ. 25','มี.ค. 25','เม.ย. 25','พ.ค. 25','มิ.ย. 25',
+  'ก.ค. 25','ส.ค. 25','ก.ย. 25','ต.ค. 25','พ.ย. 25','ธ.ค. 25',
+  'ม.ค. 26','ก.พ. 26','มี.ค. 26','เม.ย. 26'
+  //  ↑ เพิ่มเดือนใหม่ต่อท้ายที่นี่
+];
+
+const DATA = {
+  // CPI YoY %
+  cpi:    [3.1,3.2,3.5,3.4,3.3,3.0,2.9,2.5,2.4,2.6,2.7,2.9,3.0,2.8,2.4,2.4,2.3,2.7,2.9,2.5,2.4,2.6,2.7,2.7,2.4,2.4,3.3,3.8],
+  // Core CPI YoY %
+  coreCpi:[3.9,3.8,3.8,3.6,3.4,3.3,3.2,3.2,3.3,3.3,3.3,3.2,3.3,3.1,2.8,2.8,2.6,2.8,2.7,2.6,2.4,2.4,2.6,2.6,2.5,2.5,2.6,2.8],
+  // PCE YoY %
+  pce:    [2.4,2.5,2.7,2.7,2.6,2.5,2.6,2.2,2.1,2.3,2.4,2.6,2.7,2.5,2.3,2.2,2.1,2.4,2.5,2.2,2.1,2.2,2.4,2.6,2.5,2.7,3.5,3.8],
+  // Core PCE YoY %
+  corePce:[2.8,2.8,2.8,2.7,2.6,2.6,2.7,2.6,2.6,2.7,2.8,2.8,2.7,2.6,2.6,2.5,2.5,2.6,2.7,2.6,2.6,2.6,2.8,2.8,2.7,2.8,3.2,3.3],
+  // Fed Funds Rate %
+  fed:    [5.33,5.33,5.33,5.33,5.33,5.33,5.33,5.33,5.0,5.0,4.75,4.5,4.5,4.5,4.5,4.5,4.5,4.5,4.25,4.25,4.0,3.75,3.75,3.75,3.75,3.75,3.75,3.75],
+  // NFP พัน
+  nfp:    [256,275,310,165,218,206,144,78,155,36,212,307,111,117,170,177,139,150,111,168,254,24,192,302,-92,126,115,172],
+  // Avg Hourly Earnings YoY % (null = ยังไม่มีข้อมูล)
+  ahe:    [4.5,4.3,4.1,4.0,3.9,3.9,3.6,3.8,4.0,4.0,4.0,3.9,4.1,4.0,3.8,3.8,3.7,3.8,3.8,3.7,3.8,4.0,4.0,3.8,3.7,3.8,3.8,null],
+  // Import Prices YoY %
+  imp:    [0.0,0.0,0.4,1.1,1.0,1.6,2.2,0.8,-0.1,0.8,0.1,-1.1,-1.7,-1.2,0.0,0.9,0.3,0.0,-0.4,-0.1,-0.1,0.1,0.3,0.3,0.3,1.3,1.3,null],
+};
+
+// Static historical annual data (2021–2025)
+const ANNUAL_STATIC = {
+  labels:     ['2021','2022','2023','2024','2025'],
+  cpiAvg:     [4.7, 8.0, 4.1, 3.0, 2.6],
+  coreCpiAvg: [3.6, 6.2, 4.8, 3.5, 2.8],
+  fedEoy:     [0.25,4.5, 5.5, 4.5, 3.75],
+  corePceAvg: [3.3, 5.2, 3.7, 2.8, 2.6],
+  nfpAvg:     [537, 399, 225, 166, 160],
+};
+
+let ANNUAL_LABELS = [...ANNUAL_STATIC.labels];
+let ANNUAL = { ...ANNUAL_STATIC };
+delete ANNUAL.labels;
+
+// คำนวณค่าเฉลี่ยปี 2026 จาก live DATA ที่ดึงจาก FRED
+function computeAnnual2026(){
+  const yearStr = '26';
+  // หาค่าเฉลี่ยของ series โดยกรองเฉพาะเดือนที่เป็นปี 26
+  function avgForYear(arr){
+    const vals = MONTHS.map((m,i)=>m.includes(yearStr)?arr[i]:null).filter(v=>v!==null&&!isNaN(v));
+    if(!vals.length) return null;
+    return vals.reduce((a,b)=>a+b,0)/vals.length;
+  }
+  // หาค่า Fed ณ สิ้นปี 2026 (ล่าสุดที่มี)
+  function lastForYear(arr){
+    const vals = MONTHS.map((m,i)=>m.includes(yearStr)?{v:arr[i],i}:null).filter(v=>v&&v.v!==null&&!isNaN(v.v));
+    return vals.length ? vals[vals.length-1].v : null;
+  }
+
+  const cpi26     = avgForYear(DATA.cpi);
+  const core26    = avgForYear(DATA.coreCpi);
+  const fedLast26 = lastForYear(DATA.fed);
+  const pce26     = avgForYear(DATA.pce);
+  const corePce26 = avgForYear(DATA.corePce);
+  const nfpVals   = MONTHS.map((m,i)=>m.includes(yearStr)?DATA.nfp[i]:null).filter(v=>v!==null&&!isNaN(v));
+  const nfp26     = nfpVals.length ? nfpVals.reduce((a,b)=>a+b,0)/nfpVals.length : null;
+
+  // ถ้ามีข้อมูลปี 2026 แล้วให้เพิ่มเข้าไป ถ้าไม่มีให้ตัดออก
+  if(cpi26 !== null){
+    if(!ANNUAL_LABELS.includes('2026')) ANNUAL_LABELS.push('2026');
+    const idx = ANNUAL_LABELS.indexOf('2026');
+    ANNUAL.cpiAvg[idx]     = parseFloat(cpi26.toFixed(2));
+    ANNUAL.coreCpiAvg[idx] = parseFloat((core26||0).toFixed(2));
+    ANNUAL.fedEoy[idx]     = parseFloat((fedLast26||0).toFixed(2));
+    ANNUAL.corePceAvg[idx] = parseFloat((corePce26||0).toFixed(2));
+    ANNUAL.nfpAvg[idx]     = nfp26 !== null ? parseFloat(nfp26.toFixed(0)) : 0;
+  }
+}
+// ══════════════════════════════════════════════
+
+const KPI_DEFS = [
+  { key:'fed',     label:'Fed Funds Rate',      labelEn:'Fed Funds Rate',      color:'var(--purple)', fmt:v=>v.toFixed(2)+'%',
+    tip:'อัตราดอกเบี้ยนโยบายของ Fed ใช้ควบคุมเงินเฟ้อและเศรษฐกิจ', signal:'ระดับปกติ (neutral) ~2.5–3%', signalType:'info',
+    tipEn:'The Fed policy interest rate, used to manage inflation and the economy', signalEn:'Neutral level ~2.5-3%' },
+  { key:'cpi',     label:'CPI YoY',             labelEn:'CPI YoY',             color:'var(--red)',    fmt:v=>v.toFixed(1)+'%',
+    tip:'ดัชนีราคาผู้บริโภค วัดเงินเฟ้อที่ประชาชนรู้สึก รวมอาหารและพลังงาน', signal:'เป้า Fed ~2% | เกิน 3% = น่าเป็นห่วง', signalType:'watch',
+    tipEn:'Consumer Price Index, headline inflation including food and energy', signalEn:'Fed target ~2% | Above 3% = concerning' },
+  { key:'coreCpi', label:'Core CPI YoY',        labelEn:'Core CPI YoY',        color:'var(--blue)',   fmt:v=>v.toFixed(1)+'%',
+    tip:'CPI ไม่รวมอาหารและพลังงาน สะท้อนเงินเฟ้อโครงสร้างระยะยาว', signal:'ถ้าลง สู่ 2–2.5% = Fed มีพื้นที่ลดดอกเบี้ย', signalType:'ok',
+    tipEn:'CPI excluding food and energy, reflects underlying long-term inflation', signalEn:'Falling to 2-2.5% = room for Fed to cut rates' },
+  { key:'pce',     label:'PCE YoY',             labelEn:'PCE YoY',             color:'var(--amber)',  fmt:v=>v.toFixed(1)+'%',
+    tip:'ดัชนีราคาการบริโภคส่วนบุคคล ครอบคลุมกว้างกว่า CPI รวมค่าใช้จ่ายแทน', signal:'เป้า Fed คือ 2% ของ PCE โดยตรง', signalType:'info',
+    tipEn:'Personal Consumption Expenditures, broader basket than CPI', signalEn:'The Fed 2% target applies directly to PCE' },
+  { key:'corePce', label:'Core PCE YoY',        labelEn:'Core PCE YoY',        color:'var(--green)',  fmt:v=>v.toFixed(1)+'%',
+    tip:'ตัวชี้วัดที่ Fed ให้ความสำคัญสูงสุดในการตัดสินนโยบายดอกเบี้ย', signal:'นี่คือเป้าหมาย 2% ที่ Fed ใช้จริง', signalType:'hot',
+    tipEn:'The Fed preferred inflation gauge for policy decisions', signalEn:'This IS the 2% target the Fed actually uses' },
+  { key:'nfp',     label:'Non-Farm Payrolls',   labelEn:'Non-Farm Payrolls',   color:'var(--teal)',   fmt:v=>v>0?'+'+v+'K':v+'K',
+    tip:'งานใหม่นอกภาคเกษตร รายงานตลาดแรงงานที่ตลาดรอคอยมากที่สุด', signal:'ปกติ +150–250K | ติดลบ = เสี่ยงถดถอย', signalType:'watch',
+    tipEn:'New jobs outside agriculture, the most-watched labor report', signalEn:'Normal +150-250K | Negative = recession risk' },
+  { key:'ahe',     label:'Avg Hourly Earnings', labelEn:'Avg Hourly Earnings', color:'var(--green)',  fmt:v=>v?v.toFixed(1)+'%':'—',
+    tip:'การเติบโตค่าแรงเฉลี่ยรายชั่วโมง บ่งชี้แรงกดดันเงินเฟ้อจากต้นทุนแรงงาน', signal:'เกิน 4% = เสี่ยง wage-price spiral', signalType:'watch',
+    tipEn:'Average hourly wage growth, signals labor-cost inflation pressure', signalEn:'Above 4% = wage-price spiral risk' },
+  { key:'imp',     label:'Import Prices YoY',   labelEn:'Import Prices YoY',   color:'var(--amber)',  fmt:v=>v!==null?v.toFixed(1)+'%':'—',
+    tip:'ราคานำเข้าจากต่างประเทศ ชี้นำแรงกดดันเงินเฟ้อล่วงหน้า 1–3 เดือน', signal:'สูงขึ้น = ต้นทุนธุรกิจแพงขึ้น CPI ตามมา', signalType:'watch',
+    tipEn:'Import price changes, leads CPI by 1-3 months', signalEn:'Rising = higher business costs feed into CPI' },
+];
+
+const THAI_TO_EN_MONTH = {'ม.ค.':'Jan','ก.พ.':'Feb','มี.ค.':'Mar','เม.ย.':'Apr','พ.ค.':'May','มิ.ย.':'Jun','ก.ค.':'Jul','ส.ค.':'Aug','ก.ย.':'Sep','ต.ค.':'Oct','พ.ย.':'Nov','ธ.ค.':'Dec'};
+function formatMonthLabel(thLabel){
+  const parts = thLabel.split(' ');
+  if(currentLang==='en'){
+    const en = THAI_TO_EN_MONTH[parts[0]] || parts[0];
+    return en + ' 20' + parts[1];
+  }
+  return thLabel;
+}
+
+function getLast(arr){ for(let i=arr.length-1;i>=0;i--) if(arr[i]!==null) return{v:arr[i],i}; return{v:null,i:-1}; }
+
+// The "current" real-world date this dashboard is being viewed (used to backfill missing recent months)
+const APP_TODAY = new Date('2026-06-10');
+
+function parseMonthLabel(lbl){
+  const [m,y] = lbl.split(' ');
+  return { m: THAI_MONTH.indexOf(m), y: 2000 + parseInt(y,10) };
+}
+function nextMonthLabel(lbl){
+  let {m,y} = parseMonthLabel(lbl);
+  m++; if(m>11){ m=0; y++; }
+  return THAI_MONTH[m] + ' ' + String(y).slice(-2);
+}
+
+// Append placeholder months (with null values) up to the current month/year,
+// so the table always shows the latest calendar months even if FRED hasn't published them yet.
+function ensureUpToCurrentMonth(){
+  const now = new Date();
+  const curM = now.getMonth(), curY = now.getFullYear();
+  let guard = 0;
+  while(guard++ < 12){
+    const last = MONTHS[MONTHS.length-1];
+    const {m,y} = parseMonthLabel(last);
+    if(y > curY || (y === curY && m >= curM)) break;
+    MONTHS.push(nextMonthLabel(last));
+    // เพิ่ม null เฉพาะตัวที่ยังไม่มีข้อมูล ไม่เขียนทับค่าที่ FRED ส่งมาแล้ว
+    Object.keys(DATA).forEach(k => DATA[k].push(null));
+  }
+}
+
+// Export the data table to an .xlsx file
+function exportTableToExcel(){
+  const isEN = currentLang==='en';
+  const headers = isEN
+    ? ['Month','CPI YoY (%)','Core CPI YoY (%)','PCE YoY (%)','Core PCE YoY (%)','Fed Funds Rate (%)','Non-Farm Payrolls (K)','Avg Hourly Earnings YoY (%)','Import Prices YoY (%)','10Y Real Yield (%)']
+    : ['เดือน','CPI YoY (%)','Core CPI YoY (%)','PCE YoY (%)','Core PCE YoY (%)','Fed Funds Rate (%)','Non-Farm Payrolls (พัน)','Avg Hourly Earnings YoY (%)','Import Prices YoY (%)','10Y Real Yield (%)'];
+
+  // Build Real Yield lookup by YYYY-MM
+  const realMapXls = {};
+  if(yieldChartData && yieldChartData.dates){
+    yieldChartData.dates.forEach((d,i)=>{ realMapXls[d] = yieldChartData.real[i]; });
+  }
+
+  const rows = [headers];
+  for(let i=MONTHS.length-1; i>=0; i--){
+    const mLabel = MONTHS[i];
+    const mParts = mLabel.split(' ');
+    const mIdx   = THAI_MONTH.indexOf(mParts[0]);
+    const mYear  = mParts[1] ? '20'+mParts[1] : null;
+    const mKey   = mYear && mIdx>=0 ? mYear+'-'+(mIdx<9?'0':'')+(mIdx+1) : null;
+    const realV  = mKey ? (realMapXls[mKey]??null) : null;
+    rows.push([
+      formatMonthLabel(MONTHS[i]),
+      DATA.cpi[i], DATA.coreCpi[i], DATA.pce[i], DATA.corePce[i],
+      DATA.fed[i], DATA.nfp[i], DATA.ahe[i], DATA.imp[i], realV
+    ].map(v => v===null ? '' : v));
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = headers.map(()=>({wch:20}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'US Macro Data');
+
+  const latest = formatMonthLabel(MONTHS[MONTHS.length-1]).replace(/\s+/g,'_');
+  XLSX.writeFile(wb, `us_macro_dashboard_${latest}.xlsx`);
+}
+
+function buildKPI(){
+  const g = document.getElementById('kpi-grid');
+  g.innerHTML = '';
+  KPI_DEFS.forEach(d=>{
+    const {v,i} = getLast(DATA[d.key]);
+    const prev = i>0 ? DATA[d.key][i-1] : null;
+    let cl='chip-neu', lbl='\u25b2';
+    if(v!==null&&prev!==null){ if(v>prev){cl='chip-up';lbl='\u25b2';}else if(v<prev){cl='chip-dn';lbl='\u25bc';}else{cl='chip-neu';lbl='\u2192';} }
+    const note = i>=0 ? formatMonthLabel(MONTHS[i]) : '\u2014';
+
+    const histIdx = [i-3,i-2,i-1].filter(idx=>idx>=0);
+    const histHtml = histIdx.map(idx=>{
+      const val = DATA[d.key][idx];
+      const lblMonth = MONTHS[idx].split(' ')[0];
+      const dispMonth = currentLang==='en' ? (THAI_TO_EN_MONTH[lblMonth]||lblMonth) : lblMonth;
+      return `<div class="kpi-history-item">
+        <div class="kpi-history-val">${val!==null?d.fmt(val):'\u2014'}</div>
+        <div class="kpi-history-lbl">${dispMonth}</div>
+      </div>`;
+    }).join('');
+    const c = document.createElement('div');
+    c.className='kpi-card';
+    c.style.setProperty('--kpi-color', d.color);
+    const label = currentLang==='en' ? d.labelEn : d.label;
+    const tip = currentLang==='en' ? d.tipEn : d.tip;
+    const signal = currentLang==='en' ? d.signalEn : d.signal;
+    c.innerHTML=`<div class="kpi-label">${label}</div>
+      <div class="kpi-value">${v!==null?d.fmt(v):'\u2014'}</div>
+      <div class="kpi-footer"><span class="chip ${cl}">${lbl}</span><span>${note}</span></div>
+      ${histHtml ? `<div class="kpi-history">${histHtml}</div>` : ''}
+      <div class="kpi-tooltip">
+        <div class="kpi-tooltip-title">${label}</div>
+        <div class="kpi-tooltip-body">${tip}</div>
+        <div class="kpi-tooltip-signal signal-${d.signalType}">${signal}</div>
+      </div>`;
+    g.appendChild(c);
+  });
+}
+
+// Chart.js helpers
+const GC='rgba(0,0,0,.05)', TC='#9098b0';
+const baseFont={family:'IBM Plex Mono',size:10};
+const tooltipStyle={
+  backgroundColor:'#1a1d27',borderColor:'rgba(255,255,255,.12)',borderWidth:1,
+  titleColor:'#9098b0',bodyColor:'#f5f6f8',
+  titleFont:{family:'Sarabun',size:11},bodyFont:{family:'IBM Plex Mono',size:12},
+  padding:10,callbacks:{label:ctx=>{ const v=ctx.parsed.y; return ` ${ctx.dataset.label}: ${v!==null&&v!==undefined?parseFloat(v.toFixed(2))+'%':'—'}`; }}
+};
+function xScale(rot=40){ return {ticks:{color:TC,font:baseFont,maxRotation:rot,autoSkip:true,maxTicksLimit:14},grid:{color:GC}}; }
+function yScale(sfx='%'){ return {ticks:{color:TC,font:baseFont,callback:v=>v.toFixed(1)+sfx},grid:{color:GC}}; }
+function line(color,dash=[]){ return {borderColor:color,backgroundColor:'transparent',borderWidth:2,pointRadius:2,pointHoverRadius:5,tension:.35,borderDash:dash,spanGaps:true}; }
+
+let charts={};
+function buildCharts(){
+  Object.values(charts).forEach(c=>c.destroy&&c.destroy()); charts={};
+
+  const commonOpts = {
+    responsive:true,maintainAspectRatio:false,
+    interaction:{mode:'index',intersect:false},
+    plugins:{legend:{display:false},tooltip:tooltipStyle}
+  };
+
+  // Main chart
+  charts.main = new Chart(document.getElementById('c-main'),{
+    type:'line',
+    data:{labels:MONTHS,datasets:[
+      {...line('#dc2626'),    label:'CPI YoY',  data:DATA.cpi,     yAxisID:'y', spanGaps:true},
+      {...line('#2563eb'),    label:'Core CPI', data:DATA.coreCpi, yAxisID:'y', spanGaps:true},
+      {...line('#d97706',[5,3]), label:'PCE YoY',  data:DATA.pce,  yAxisID:'y', spanGaps:true},
+      {...line('#16a34a',[5,3]), label:'Core PCE', data:DATA.corePce,yAxisID:'y', spanGaps:true},
+      {...line('#7c3aed',[8,4]), label:'Fed Rate',data:DATA.fed,    yAxisID:'y2',pointRadius:0,borderWidth:1.5,spanGaps:true},
+    ]},
+    options:{...commonOpts, scales:{
+      x:xScale(),
+      y:{...yScale(), min:1,max:7},
+      y2:{position:'right',ticks:{color:'#7c3aed',font:baseFont,callback:v=>v.toFixed(2)+'%'},grid:{display:false},min:2,max:6},
+    }}
+  });
+
+  charts.cpi = new Chart(document.getElementById('c-cpi'),{
+    type:'line',
+    data:{labels:MONTHS,datasets:[
+      {...line('#dc2626'), label:'CPI YoY', data:DATA.cpi, spanGaps:true},
+      {...line('#2563eb',[5,3]), label:'Core CPI', data:DATA.coreCpi, spanGaps:true},
+    ]},
+    options:{...commonOpts,scales:{x:xScale(),y:yScale()}}
+  });
+
+  charts.pce = new Chart(document.getElementById('c-pce'),{
+    type:'line',
+    data:{labels:MONTHS,datasets:[
+      {...line('#d97706'), label:'PCE YoY', data:DATA.pce, spanGaps:true},
+      {...line('#16a34a',[5,3]), label:'Core PCE', data:DATA.corePce, spanGaps:true},
+    ]},
+    options:{...commonOpts,scales:{x:xScale(),y:yScale()}}
+  });
+
+  charts.nfp = new Chart(document.getElementById('c-nfp'),{
+    type:'bar',
+    data:{labels:MONTHS,datasets:[{
+      label:'NFP (พัน)',data:DATA.nfp,
+      backgroundColor:DATA.nfp.map(v=>v===null?'transparent':v<0?'rgba(220,38,38,.6)':'rgba(37,99,235,.55)'),
+      borderRadius:3,
+    }]},
+    options:{...commonOpts,scales:{x:xScale(),y:{ticks:{color:TC,font:baseFont},grid:{color:GC}}}}
+  });
+
+  charts.ahe = new Chart(document.getElementById('c-ahe'),{
+    type:'line',
+    data:{labels:MONTHS,datasets:[{...line('#16a34a'),label:'AHE YoY',data:DATA.ahe,spanGaps:true}]},
+    options:{...commonOpts,scales:{x:xScale(),y:yScale()}}
+  });
+
+  charts.imp = new Chart(document.getElementById('c-imp'),{
+    type:'bar',
+    data:{labels:MONTHS,datasets:[{
+      label:'Import Prices',data:DATA.imp,
+      backgroundColor:DATA.imp.map(v=>v===null?'transparent':v<0?'rgba(22,163,74,.55)':'rgba(217,119,6,.6)'),
+      borderRadius:3,
+    }]},
+    options:{...commonOpts,scales:{x:xScale(),y:yScale()}}
+  });
+
+  // สีแท่งปี 2026 ต่างกัน (ยังไม่ครบปี — ใช้ opacity ต่ำกว่า)
+  const annColor = (base, is2026) => is2026
+    ? base.replace(/[\d.]+\)$/, '0.35)')   // ปี 2026 = โปร่งใสกว่า
+    : base;
+  const ann2026Idx = ANNUAL_LABELS.indexOf('2026');
+  const mkAnnColors = (base) => ANNUAL_LABELS.map((_,i) => annColor(base, i===ann2026Idx));
+  const annXScale = {ticks:{color:TC,font:{family:'Sarabun',size:11}},grid:{color:GC}};
+  const annNote = ann2026Idx>=0 ? (currentLang==='en'?' (2026 = YTD avg)':' (2026 = เฉลี่ย YTD)') : '';
+
+  charts.annCpi = new Chart(document.getElementById('c-ann-cpi'),{
+    type:'bar',
+    data:{labels:ANNUAL_LABELS,datasets:[
+      {label:'CPI'+(currentLang==='en'?' Avg':'เฉลี่ย'), data:ANNUAL.cpiAvg,
+       backgroundColor:mkAnnColors('rgba(220,38,38,.65)'), borderRadius:5},
+      {label:'Core CPI', data:ANNUAL.coreCpiAvg,
+       backgroundColor:mkAnnColors('rgba(37,99,235,.6)'), borderRadius:5},
+    ]},
+    options:{...commonOpts,
+      plugins:{...commonOpts.plugins, subtitle:{display:ann2026Idx>=0, text:currentLang==='en'?'*2026 = year-to-date average':'*2026 = ค่าเฉลี่ยถึงปัจจุบัน', color:TC, font:{size:10,family:'Sarabun'}}},
+      scales:{x:annXScale,y:yScale()}}
+  });
+
+  charts.annFed = new Chart(document.getElementById('c-ann-fed'),{
+    type:'bar',
+    data:{labels:ANNUAL_LABELS,datasets:[
+      {label:'Fed Rate (EOY)', data:ANNUAL.fedEoy,
+       backgroundColor:mkAnnColors('rgba(124,58,237,.65)'), borderRadius:5},
+      {label:'Core PCE', data:ANNUAL.corePceAvg,
+       backgroundColor:mkAnnColors('rgba(22,163,74,.55)'), borderRadius:5},
+    ]},
+    options:{...commonOpts,scales:{x:annXScale,y:yScale()}}
+  });
+
+  const nfpColors = ANNUAL_LABELS.map((_,i)=>{
+    if(i===ann2026Idx) return 'rgba(217,119,6,.35)';  // 2026 YTD
+    if(ANNUAL_LABELS[i]==='2025') return 'rgba(217,119,6,.6)';
+    return 'rgba(37,99,235,.65)';
+  });
+  charts.annNfp = new Chart(document.getElementById('c-ann-nfp'),{
+    type:'bar',
+    data:{labels:ANNUAL_LABELS,datasets:[{
+      label:currentLang==='en'?'Avg NFP/month':'NFP เฉลี่ย/เดือน',
+      data:ANNUAL.nfpAvg, backgroundColor:nfpColors, borderRadius:5,
+    }]},
+    options:{...commonOpts,scales:{x:annXScale,y:{ticks:{color:TC,font:baseFont},grid:{color:GC}}}}
+  });
+}
+
+// ── YEAR-OVER-YEAR COMPARISON ──
+const COMPARE_DEFS = {
+  cpi:    {label:'CPI YoY', sfx:'%'},
+  coreCpi:{label:'Core CPI YoY', sfx:'%'},
+  pce:    {label:'PCE YoY', sfx:'%'},
+  corePce:{label:'Core PCE YoY', sfx:'%'},
+  fed:    {label:'Fed Funds Rate', sfx:'%'},
+  nfp:    {label:'Non-Farm Payrolls', sfx:'K'},
+  ahe:    {label:'Avg Hourly Earnings', sfx:'%'},
+  imp:    {label:'Import Prices YoY', sfx:'%'},
+};
+const M12 = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const YEAR_COLORS = {'24':'#9098b0','25':'#2563eb','26':'#dc2626'};
+
+let compareChart = null;
+function buildCompareChart(){
+  const metric = document.getElementById('compare-metric-select').value;
+  const def = COMPARE_DEFS[metric];
+  const arr = DATA[metric];
+
+  // Split flat array (28 months starting Jan'24) into per-year buckets of 12
+  const years = {'24':Array(12).fill(null), '25':Array(12).fill(null), '26':Array(12).fill(null)};
+  MONTHS.forEach((m,i)=>{
+    const yr = m.slice(-2);
+    const monthIdx = M12.findIndex(mm=>m.startsWith(mm));
+    if(years[yr]) years[yr][monthIdx] = arr[i];
+  });
+
+  const datasets = Object.keys(years).map(yr=>({
+    label:'25'+'.'.repeat(0)+'20'+yr, // placeholder, overwritten below
+    data:years[yr],
+    ...line(YEAR_COLORS[yr]),
+    spanGaps:true,
+  }));
+  datasets.forEach((d,idx)=>{
+    const yr = Object.keys(years)[idx];
+    d.label = '20'+yr;
+  });
+
+  const compareEl = document.getElementById('compare-title');
+  if(compareEl) compareEl.textContent = currentLang==='en'
+    ? `${def.label} — Monthly Comparison: 2024 vs 2025 vs 2026`
+    : `เปรียบเทียบ ${def.label} รายเดือน — 2024 vs 2025 vs 2026`;
+
+  if(compareChart) compareChart.destroy();
+  compareChart = new Chart(document.getElementById('c-compare'),{
+    type:'line',
+    data:{labels:M12, datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false}, tooltip:{...tooltipStyle,
+        callbacks:{label:ctx=>` ${ctx.dataset.label}: ${ctx.parsed.y!==null?ctx.parsed.y.toFixed(1):'—'}${def.sfx}`}}},
+      scales:{
+        x:{ticks:{color:TC,font:{family:'Sarabun',size:11}},grid:{color:GC}},
+        y:{ticks:{color:TC,font:baseFont,callback:v=>v+def.sfx},grid:{color:GC}}
+      }
+    }
+  });
+
+  // Build legend
+  const legEl = document.getElementById('compare-legend');
+  legEl.innerHTML = Object.keys(YEAR_COLORS).map(yr=>
+    `<div class="leg"><div class="leg-line" style="background:${YEAR_COLORS[yr]}"></div>20${yr}</div>`
+  ).join('');
+}
+
+function onAnnualViewChange(){
+  const mode = document.getElementById('annual-view-select').value;
+  const isCompare = mode === 'compare';
+  document.getElementById('annual-view-annual').style.display = isCompare ? 'none' : 'block';
+  document.getElementById('annual-view-compare').style.display = isCompare ? 'block' : 'none';
+  document.getElementById('compare-metric-select').style.display = isCompare ? 'inline-block' : 'none';
+  if(isCompare) buildCompareChart();
+}
+
+// ── ECONOMIC CALENDAR ──
+const TODAY = new Date('2026-06-10');
+const THAI_DOW = ['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'];
+const EN_DOW   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const THAI_MONTH = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const EN_MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const FULL_MONTH = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+const EN_FULL_MONTH = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+// English description templates by event type (uses the data-month, i.e. the month BEFORE the release date)
+const EN_DESC = {
+  CPI:  (m,y)=>`BLS releases the Consumer Price Index for ${m} ${y}`,
+  PCE:  (m,y)=>`BEA releases the Personal Consumption Expenditures price index for ${m} ${y}`,
+  NFP:  (m,y)=>`BLS releases the Employment Situation (Non-Farm Payrolls) for ${m} ${y}`,
+  GDP:  ()=>`BEA releases the GDP estimate for the quarter`,
+  FOMC: ()=>`Federal Reserve FOMC meeting / interest rate decision`,
+};
+// Translate a Thai event title (e.g. "CPI — พ.ค. 2026 (วันที่ 1)") into English by swapping the Thai month abbreviation
+function translateCalTitle(title){
+  let t = title;
+  THAI_MONTH.forEach((th,idx)=>{ t = t.split(th).join(EN_MONTH_ABBR[idx]); });
+  t = t.replace('วันที่ 1','Day 1').replace('หรือ','or');
+  return t;
+}
+// Build an English description from the event's release date (data refers to prior month)
+function translateCalDesc(e){
+  const d = new Date(e.date);
+  let m = d.getMonth()-1, y = d.getFullYear();
+  if(m<0){ m=11; y--; }
+  const fn = EN_DESC[e.type] || (()=>'');
+  return fn(EN_FULL_MONTH[m], y);
+}
+
+// history = ประวัติผล 3 รอบล่าสุด [{date, actual, forecast, beat}]
+// beat: 'beat'=สูงกว่าคาด, 'miss'=ต่ำกว่าคาด, 'inline'=ตามคาด, null=ไม่มีคาดการณ์
+const CALENDAR = [
+  // ── มิถุนายน 2026 ──
+  {date:'2026-06-10', type:'CPI', impact:'high', title:'CPI — พ.ค. 2026',
+   desc:'Bureau of Labor Statistics เผยแพร่ดัชนีราคาผู้บริโภคเดือนพฤษภาคม',
+   prev:'3.8%', forecast:'3.5%', actual:'4.2%', color:'#dc2626',
+   history:[
+     {date:'ก.พ. 26', actual:'2.4%', forecast:'2.9%', beat:'miss'},
+     {date:'มี.ค. 26', actual:'3.3%', forecast:'3.0%', beat:'beat'},
+     {date:'เม.ย. 26', actual:'3.9%', forecast:'3.5%', beat:'beat'},
+   ]},
+  {date:'2026-06-17', type:'FOMC', impact:'high', title:'FOMC Decision — มิ.ย. 2026',
+   desc:'ประกาศผลดอกเบี้ย Fed + แถลงข่าว Chair Powell + SEP (dot plot)',
+   prev:'3.75%', forecast:'3.75%', actual:'3.75%', color:'#7c3aed',
+   history:[
+     {date:'ต.ค. 25', actual:'3.75%', forecast:'3.75%', beat:'inline'},
+     {date:'ธ.ค. 25', actual:'3.75%', forecast:'3.75%', beat:'inline'},
+     {date:'ม.ค. 26', actual:'3.75%', forecast:'3.75%', beat:'inline'},
+   ]},
+  {date:'2026-06-26', type:'PCE', impact:'high', title:'PCE — พ.ค. 2026',
+   desc:'Bureau of Economic Analysis เผยแพร่ Personal Consumption Expenditures เดือนพฤษภาคม',
+   prev:'3.8%', forecast:'3.6%', actual:null, color:'#d97706',
+   history:[
+     {date:'ก.พ. 26', actual:'2.7%', forecast:'2.6%', beat:'beat'},
+     {date:'มี.ค. 26', actual:'3.5%', forecast:'3.1%', beat:'beat'},
+     {date:'เม.ย. 26', actual:'3.8%', forecast:'3.5%', beat:'beat'},
+   ]},
+
+  // ── กรกฎาคม 2026 ──
+  {date:'2026-07-02', type:'NFP', impact:'high', title:'Jobs Report — มิ.ย. 2026',
+   desc:'รายงานการจ้างงานนอกภาคเกษตร (NFP) และ Unemployment Rate เดือนมิถุนายน',
+   prev:'+57K', forecast:'+120K', actual:null, color:'#16a34a',
+   history:[
+     {date:'มี.ค. 26', actual:'+214K', forecast:'+130K', beat:'beat'},
+     {date:'เม.ย. 26', actual:'+148K', forecast:'+130K', beat:'beat'},
+     {date:'พ.ค. 26', actual:'+129K', forecast:'+85K',  beat:'beat'},
+   ]},
+  {date:'2026-07-08', type:'FOMC', impact:'med', title:'FOMC Minutes — มิ.ย. 2026',
+   desc:'เผยแพร่รายงานการประชุม FOMC เดือนมิถุนายน — อ่านสัญญาณนโยบายระยะถัดไป',
+   prev:null, forecast:null, actual:null, color:'#7c3aed', history:[]},
+  {date:'2026-07-14', type:'CPI', impact:'high', title:'CPI — มิ.ย. 2026',
+   desc:'Bureau of Labor Statistics เผยแพร่ดัชนีราคาผู้บริโภคเดือนมิถุนายน',
+   prev:'4.2%', forecast:'3.8%', actual:null, color:'#dc2626',
+   history:[
+     {date:'มี.ค. 26', actual:'3.3%', forecast:'3.0%', beat:'beat'},
+     {date:'เม.ย. 26', actual:'3.9%', forecast:'3.5%', beat:'beat'},
+     {date:'พ.ค. 26', actual:'4.2%', forecast:'3.5%', beat:'beat'},
+   ]},
+  {date:'2026-07-29', type:'FOMC', impact:'high', title:'FOMC Decision — ก.ค. 2026',
+   desc:'ประกาศผลดอกเบี้ย Fed รอบเดือนกรกฎาคม — จับตาว่าจะขึ้นดอกเบี้ยจาก 3.75% หรือไม่',
+   prev:'3.75%', forecast:'3.75%–4.00%', actual:null, color:'#7c3aed',
+   history:[
+     {date:'ธ.ค. 25', actual:'3.75%', forecast:'3.75%', beat:'inline'},
+     {date:'ม.ค. 26', actual:'3.75%', forecast:'3.75%', beat:'inline'},
+     {date:'มิ.ย. 26', actual:'3.75%', forecast:'3.75%', beat:'inline'},
+   ]},
+  {date:'2026-07-30', type:'GDP', impact:'high', title:'GDP Q2 2026 (Advance)',
+   desc:'Bureau of Economic Analysis เผยแพร่ GDP ไตรมาส 2 รอบแรก (Advance Estimate)',
+   prev:null, forecast:'+1.8% QoQ', actual:null, color:'#2563eb',
+   history:[
+     {date:'Q3 25', actual:'+2.8%', forecast:'+2.5%', beat:'beat'},
+     {date:'Q4 25', actual:'+2.4%', forecast:'+2.1%', beat:'beat'},
+     {date:'Q1 26', actual:'-0.5%', forecast:'+0.4%', beat:'miss'},
+   ]},
+
+  // ── สิงหาคม 2026 ──
+  {date:'2026-08-07', type:'NFP', impact:'high', title:'Jobs Report — ก.ค. 2026',
+   desc:'รายงานการจ้างงานนอกภาคเกษตรเดือนกรกฎาคม',
+   prev:null, forecast:null, actual:null, color:'#16a34a',
+   history:[
+     {date:'เม.ย. 26', actual:'+148K', forecast:'+130K', beat:'beat'},
+     {date:'พ.ค. 26', actual:'+129K', forecast:'+85K',  beat:'beat'},
+     {date:'มิ.ย. 26', actual:'+57K',  forecast:'+120K', beat:'miss'},
+   ]},
+  {date:'2026-08-12', type:'CPI', impact:'high', title:'CPI — ก.ค. 2026',
+   desc:'Bureau of Labor Statistics เผยแพร่ดัชนีราคาผู้บริโภคเดือนกรกฎาคม',
+   prev:null, forecast:null, actual:null, color:'#dc2626',
+   history:[
+     {date:'เม.ย. 26', actual:'3.9%', forecast:'3.5%', beat:'beat'},
+     {date:'พ.ค. 26', actual:'4.2%', forecast:'3.5%', beat:'beat'},
+     {date:'มิ.ย. 26', actual:null, forecast:'3.8%', beat:null},
+   ]},
+  {date:'2026-08-19', type:'FOMC', impact:'med', title:'FOMC Minutes — ก.ค. 2026',
+   desc:'เผยแพร่รายงานการประชุม FOMC เดือนกรกฎาคม',
+   prev:null, forecast:null, actual:null, color:'#7c3aed', history:[]},
+  {date:'2026-08-27', type:'PCE', impact:'high', title:'PCE — ก.ค. 2026',
+   desc:'Bureau of Economic Analysis เผยแพร่ PCE เดือนกรกฎาคม',
+   prev:null, forecast:null, actual:null, color:'#d97706',
+   history:[
+     {date:'มี.ค. 26', actual:'3.5%', forecast:'3.1%', beat:'beat'},
+     {date:'เม.ย. 26', actual:'3.8%', forecast:'3.5%', beat:'beat'},
+     {date:'พ.ค. 26', actual:null, forecast:'3.6%', beat:null},
+   ]},
+
+  // ── กันยายน 2026 ──
+  {date:'2026-09-04', type:'NFP', impact:'high', title:'Jobs Report — ส.ค. 2026',
+   desc:'รายงานการจ้างงานนอกภาคเกษตรเดือนสิงหาคม',
+   prev:null, forecast:null, actual:null, color:'#16a34a',
+   history:[
+     {date:'พ.ค. 26', actual:'+129K', forecast:'+85K',  beat:'beat'},
+     {date:'มิ.ย. 26', actual:'+57K',  forecast:'+120K', beat:'miss'},
+     {date:'ก.ค. 26', actual:null, forecast:null, beat:null},
+   ]},
+  {date:'2026-09-11', type:'CPI', impact:'high', title:'CPI — ส.ค. 2026',
+   desc:'Bureau of Labor Statistics เผยแพร่ดัชนีราคาผู้บริโภคเดือนสิงหาคม',
+   prev:null, forecast:null, actual:null, color:'#dc2626',
+   history:[
+     {date:'พ.ค. 26', actual:'4.2%', forecast:'3.5%', beat:'beat'},
+     {date:'มิ.ย. 26', actual:null, forecast:'3.8%', beat:null},
+     {date:'ก.ค. 26', actual:null, forecast:null, beat:null},
+   ]},
+  {date:'2026-09-15', type:'FOMC', impact:'high', title:'FOMC Meeting — ก.ย. 2026',
+   desc:'ประชุม FOMC พร้อม SEP และ dot plot รอบไตรมาส 3 — สำคัญมากต่อทิศทางดอกเบี้ยปลายปี',
+   prev:null, forecast:null, actual:null, color:'#7c3aed',
+   history:[
+     {date:'ม.ค. 26', actual:'3.75%', forecast:'3.75%', beat:'inline'},
+     {date:'มิ.ย. 26', actual:'3.75%', forecast:'3.75%', beat:'inline'},
+     {date:'ก.ค. 26', actual:null, forecast:'3.75%–4.00%', beat:null},
+   ]},
+
+  // ── ตุลาคม–ธันวาคม 2026 ──
+  {date:'2026-10-02', type:'NFP', impact:'high', title:'Jobs Report — ก.ย. 2026',
+   desc:'รายงานการจ้างงานนอกภาคเกษตรเดือนกันยายน',
+   prev:null, forecast:null, actual:null, color:'#16a34a', history:[]},
+  {date:'2026-10-14', type:'CPI', impact:'high', title:'CPI — ก.ย. 2026',
+   desc:'Bureau of Labor Statistics เผยแพร่ดัชนีราคาผู้บริโภคเดือนกันยายน',
+   prev:null, forecast:null, actual:null, color:'#dc2626', history:[]},
+  {date:'2026-10-27', type:'FOMC', impact:'high', title:'FOMC Decision — ต.ค. 2026',
+   desc:'ประกาศผลดอกเบี้ย Fed รอบเดือนตุลาคม',
+   prev:null, forecast:null, actual:null, color:'#7c3aed', history:[]},
+  {date:'2026-11-06', type:'NFP', impact:'high', title:'Jobs Report — ต.ค. 2026',
+   desc:'รายงานการจ้างงานนอกภาคเกษตรเดือนตุลาคม',
+   prev:null, forecast:null, actual:null, color:'#16a34a', history:[]},
+  {date:'2026-12-08', type:'FOMC', impact:'high', title:'FOMC Decision — ธ.ค. 2026 ⭐',
+   desc:'ประชุม FOMC ครั้งสุดท้ายของปี + SEP — ตลาดจับตาว่า Fed จะขึ้นดอกเบี้ย 3.75% → 4.00% หรือไม่',
+   prev:'3.75%', forecast:'3.75% หรือ 4.00%', actual:null, color:'#7c3aed',
+   history:[
+     {date:'ม.ค. 26', actual:'3.75%', forecast:'3.75%', beat:'inline'},
+     {date:'มิ.ย. 26', actual:'3.75%', forecast:'3.75%', beat:'inline'},
+     {date:'ก.ค. 26', actual:null, forecast:'3.75%–4.00%', beat:null},
+   ]},
+  {date:'2026-12-10', type:'CPI', impact:'high', title:'CPI — พ.ย. 2026',
+   desc:'Bureau of Labor Statistics เผยแพร่ดัชนีราคาผู้บริโภคเดือนพฤศจิกายน',
+   prev:null, forecast:null, actual:null, color:'#dc2626', history:[]},
+
+  // ── Import Prices (IMP) ──
+  {date:'2026-07-14', type:'IMP', impact:'med', title:'Import Prices — มิ.ย. 2026',
+   desc:'BLS รายงานดัชนีราคานำเข้าและส่งออกเดือนมิถุนายน',
+   prev:'4.2%', forecast:null, actual:null, color:'#d97706',
+   history:[
+     {date:'มี.ค. 26', actual:'1.9%',  forecast:null, beat:null},
+     {date:'เม.ย. 26', actual:'4.3%',  forecast:null, beat:null},
+     {date:'พ.ค. 26',  actual:'6.2%',  forecast:null, beat:null},
+   ]},
+  {date:'2026-08-14', type:'IMP', impact:'med', title:'Import Prices — ก.ค. 2026',
+   desc:'BLS รายงานดัชนีราคานำเข้าเดือนกรกฎาคม',
+   prev:null, forecast:null, actual:null, color:'#d97706', history:[]},
+  {date:'2026-09-11', type:'IMP', impact:'med', title:'Import Prices — ส.ค. 2026',
+   desc:'BLS รายงานดัชนีราคานำเข้าเดือนสิงหาคม',
+   prev:null, forecast:null, actual:null, color:'#d97706', history:[]},
+  {date:'2026-10-15', type:'IMP', impact:'med', title:'Import Prices — ก.ย. 2026',
+   desc:'BLS รายงานดัชนีราคานำเข้าเดือนกันยายน',
+   prev:null, forecast:null, actual:null, color:'#d97706', history:[]},
+  {date:'2026-11-13', type:'IMP', impact:'med', title:'Import Prices — ต.ค. 2026',
+   desc:'BLS รายงานดัชนีราคานำเข้าเดือนตุลาคม',
+   prev:null, forecast:null, actual:null, color:'#d97706', history:[]},
+  {date:'2026-12-11', type:'IMP', impact:'med', title:'Import Prices — พ.ย. 2026',
+   desc:'BLS รายงานดัชนีราคานำเข้าเดือนพฤศจิกายน',
+   prev:null, forecast:null, actual:null, color:'#d97706', history:[]},
+];
+
+let calFilter = 'all';
+
+function filterCal(type, btn){
+  calFilter = type;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderCalendar();
+}
+
+function renderCalendar(){
+  const list = document.getElementById('cal-list');
+  if(!list) return;
+
+  // Only show today and future events
+  const todayStr = new Date().toISOString().slice(0,10);
+  const baseEvents = calFilter==='all' ? CALENDAR : CALENDAR.filter(e=>e.type===calFilter);
+  const events = baseEvents.filter(e => e.date >= todayStr);
+
+  // Group by month
+  const groups = {};
+  events.forEach(e=>{
+    const d = new Date(e.date);
+    const key = `${d.getFullYear()}-${d.getMonth()}`;
+    if(!groups[key]) groups[key] = {year:d.getFullYear(), month:d.getMonth(), events:[]};
+    groups[key].events.push(e);
+  });
+
+  const isEN = currentLang==='en';
+  const monthNames = isEN ? EN_FULL_MONTH : FULL_MONTH;
+  const dowNames   = isEN ? EN_DOW : THAI_DOW;
+  const monthAbbr  = isEN ? EN_MONTH_ABBR : THAI_MONTH;
+  const todayLabel = isEN ? 'Today' : 'วันนี้';
+  const labelPrev  = isEN ? 'Previous:' : 'ก่อนหน้า:';
+  const labelFcst  = isEN ? 'Forecast:' : 'คาดการณ์:';
+  const labelAct   = isEN ? 'Actual:' : 'จริง:';
+  const impHigh    = isEN ? '🔴 High Impact' : '🔴 ผลกระทบสูง';
+  const impMed     = isEN ? '🟡 Medium' : '🟡 ปานกลาง';
+
+  let html = '';
+  Object.values(groups).forEach(g=>{
+    html += `<div class="cal-month-label">${monthNames[g.month]} ${g.year}</div>`;
+    g.events.forEach(e=>{
+      const d = new Date(e.date);
+      const isToday = e.date === todayStr;
+      const tagClass = {FOMC:'tag-fomc',CPI:'tag-cpi',NFP:'tag-nfp',PCE:'tag-pce',GDP:'tag-gdp',IMP:'tag-med'}[e.type]||'tag-med';
+      const impClass = e.impact==='high'?'tag-high':'tag-med';
+      const impLabel = e.impact==='high'? impHigh : impMed;
+
+      const title = isEN ? translateCalTitle(e.title) : e.title;
+      const desc  = isEN ? translateCalDesc(e) : e.desc;
+
+      // Current round forecast row
+      let forecastHtml = '';
+      if(e.prev||e.forecast||e.actual){
+        forecastHtml = `<div class="cal-forecast">`;
+        if(e.prev)    forecastHtml += `${labelPrev} <span>${e.prev}</span>&nbsp;&nbsp;`;
+        if(e.forecast) forecastHtml += `${labelFcst} <span>${e.forecast}</span>${e.forecastNote ? `<span style="font-size:10px;color:var(--text3);margin-left:4px">(${e.forecastNote})</span>` : ''}&nbsp;&nbsp;`;
+        if(e.actual)  forecastHtml += `${labelAct} <span style="color:var(--blue);font-weight:600">${e.actual}</span>`;
+        forecastHtml += `</div>`;
+      }
+
+      // History strip — 3 รอบล่าสุด
+      const BEAT_LABEL = {
+        beat:   {th:'สูงกว่าคาด', en:'Beat'},
+        miss:   {th:'ต่ำกว่าคาด', en:'Miss'},
+        inline: {th:'ตามคาด',    en:'In-line'},
+      };
+      const BEAT_CLASS = {beat:'badge-beat', miss:'badge-miss', inline:'badge-inline'};
+      let histHtml = '';
+      const hist = (e.history||[]).filter(h=>h.actual||h.forecast);
+      if(hist.length > 0){
+        const histLabel = isEN ? 'Previous 3 rounds:' : '3 รอบล่าสุด:';
+        histHtml = `<div class="cal-history">
+          <div style="font-size:10px;color:var(--text3);width:100%;margin-bottom:2px">${histLabel}</div>
+          ${hist.slice(-3).map(h=>{
+            const beatCls  = h.beat ? BEAT_CLASS[h.beat]   : '';
+            const beatTxt  = h.beat ? BEAT_LABEL[h.beat][isEN?'en':'th'] : '';
+            const valColor = h.beat==='beat'?'color:#15803d':h.beat==='miss'?'color:#b91c1c':'';
+            return `<div class="cal-history-item">
+              <div class="cal-history-date">${h.date}</div>
+              <div class="cal-history-val" style="${valColor}">${h.actual||'—'}</div>
+              ${beatCls ? `<div class="cal-history-badge ${beatCls}">${beatTxt}</div>` : ''}
+            </div>`;
+          }).join('')}
+        </div>`;
+      }
+
+      html += `
+      <div class="cal-event ${isToday?'today':''}" style="--event-color:${e.color}">
+        <div class="cal-date">
+          <div class="cal-day">${d.getDate()}</div>
+          <div class="cal-dow">${dowNames[d.getDay()]}</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:2px">${monthAbbr[d.getMonth()]}</div>
+        </div>
+        <div class="cal-body">
+          <div class="cal-title">${title} ${isToday?`<span class="today-badge">${todayLabel}</span>`:''} ${e.fromFinnhub?`<span class="today-badge" style="background:#2563eb">LIVE</span>`:''}</div>
+          <div class="cal-meta">
+            <span class="cal-tag ${tagClass}">${e.type}</span>
+            <span class="cal-tag ${impClass}">${impLabel}</span>
+          </div>
+          <div style="font-size:12px;color:var(--text3);margin-top:5px;line-height:1.5">${desc}</div>
+          ${forecastHtml}
+          ${histHtml}
+        </div>
+      </div>`;
+    });
+  });
+  list.innerHTML = html || `<div style="color:var(--text3);font-size:13px;padding:20px 0">${isEN?'No events in this category':'ไม่มีกิจกรรมในหมวดนี้'}</div>`;
+}
+
+// ── Indicator Guide Tab — bilingual ──
+const IND_DATA = [
+  {
+    icon:'🏦', bg:'#ede9fe',
+    name:'Fed Funds Rate',
+    abbr:{th:'อัตราดอกเบี้ยนโยบาย — Federal Reserve', en:'Policy Interest Rate — Federal Reserve'},
+    desc:{
+      th:'อัตราดอกเบี้ยที่ธนาคารกลางสหรัฐ (Fed) กำหนดให้ธนาคารพาณิชย์คิดดอกเบี้ยกันเองในตลาดเงินข้ามคืน ถือเป็น<strong>เครื่องมือหลักในการควบคุมเศรษฐกิจ</strong> เมื่อ Fed ขึ้นดอกเบี้ย ต้นทุนการกู้ยืมทั่วระบบสูงขึ้น ชะลอการใช้จ่ายและเงินเฟ้อ',
+      en:'The rate at which banks lend to each other overnight, set by the Federal Reserve. It is the <strong>primary tool for controlling the economy</strong>. Rate hikes raise borrowing costs and slow inflation; cuts stimulate growth.'
+    },
+    signals:{
+      th:[{t:'hot',i:'🔴',l:'ระวัง',txt:'ดอกเบี้ยสูงนาน → เสี่ยงเศรษฐกิจถดถอย สินเชื่อแพง ตลาดหุ้นกดดัน'},{t:'ok',i:'🟢',l:'ดี',txt:'ดอกเบี้ยลด → ต้นทุนกู้ยืมลด กระตุ้นการลงทุนและการบริโภค'},{t:'info',i:'💡',l:'ติดตาม',txt:'การประชุม FOMC 8 ครั้ง/ปี — ดู dot plot และ forward guidance'}],
+      en:[{t:'hot',i:'🔴',l:'Warning',txt:'High rates for long → recession risk, expensive credit, equity pressure'},{t:'ok',i:'🟢',l:'Good',txt:'Rate cuts → lower borrowing costs, stimulates investment and consumption'},{t:'info',i:'💡',l:'Watch',txt:'FOMC meets 8 times/year — follow the dot plot and forward guidance'}]
+    },
+    meta:{th:['เผยแพร่โดย <strong>Federal Reserve</strong>','ระดับ neutral <strong>~2.5–3.0%</strong>','ปัจจุบัน <strong>3.75%</strong>'],
+          en:['Published by <strong>Federal Reserve</strong>','Neutral level <strong>~2.5–3.0%</strong>','Current <strong>3.75%</strong>']}
+  },
+  {
+    icon:'🛒', bg:'#fee2e2',
+    name:'Consumer Price Index (CPI)',
+    abbr:{th:'ดัชนีราคาผู้บริโภค — YoY %', en:'Consumer Price Index — YoY %'},
+    desc:{
+      th:'วัดการเปลี่ยนแปลงราคาสินค้าและบริการที่ครัวเรือนซื้อในชีวิตประจำวัน ครอบคลุมกว่า 200 รายการ ได้แก่ อาหาร พลังงาน ที่อยู่อาศัย การขนส่ง เป็นตัวชี้วัดเงินเฟ้อที่<strong>สาธารณชนรับรู้มากที่สุด</strong>',
+      en:'Measures the change in prices of goods and services that households buy daily, covering 200+ categories including food, energy, housing and transport. The most <strong>publicly visible inflation gauge</strong>.'
+    },
+    signals:{
+      th:[{t:'hot',i:'🔴',l:'ระวัง',txt:'CPI > 3% ต่อเนื่อง → ซื้อของแพงขึ้น กำลังซื้อลด กดดัน Fed ขึ้นดอกเบี้ย'},{t:'ok',i:'🟢',l:'ดี',txt:'CPI อยู่ที่ 2–2.5% → เงินเฟ้อในระดับเป้าหมาย เศรษฐกิจสมดุล'},{t:'watch',i:'⚠️',l:'จับตา',txt:'หมวดที่อยู่อาศัย (Shelter) มีน้ำหนัก ~33% ใน CPI มักเคลื่อนไหวช้ากว่าตลาดจริง'}],
+      en:[{t:'hot',i:'🔴',l:'Warning',txt:'CPI > 3% sustained → purchasing power falls, pressures Fed to hike rates'},{t:'ok',i:'🟢',l:'Good',txt:'CPI at 2–2.5% → inflation at target, economy in balance'},{t:'watch',i:'⚠️',l:'Watch',txt:'Shelter has ~33% weight in CPI and tends to lag real market prices'}]
+    },
+    meta:{th:['เผยแพร่โดย <strong>BLS</strong>','เป้าหมาย Fed <strong>~2%</strong>','ออกทุก <strong>ต้นเดือน</strong>'],
+          en:['Published by <strong>BLS</strong>','Fed target <strong>~2%</strong>','Released <strong>mid-month</strong>']}
+  },
+  {
+    icon:'🎯', bg:'#dbeafe',
+    name:'Core CPI',
+    abbr:{th:'ดัชนีราคาผู้บริโภคพื้นฐาน — ไม่รวมอาหารและพลังงาน', en:'Core Consumer Price Index — Ex-Food & Energy'},
+    desc:{
+      th:'CPI ที่ตัดหมวดอาหารสดและพลังงานออก เนื่องจากมีความผันผวนสูง Core CPI จึง<strong>สะท้อนแรงกดดันเงินเฟ้อพื้นฐาน</strong>ที่ถาวรกว่า นักวิเคราะห์และ Fed ใช้ตัวนี้ประเมินทิศทางนโยบายการเงินระยะกลาง',
+      en:'CPI excluding food and energy, which are highly volatile. Core CPI better <strong>reflects underlying, persistent inflation pressure</strong>. Analysts and the Fed use it to assess medium-term monetary policy direction.'
+    },
+    signals:{
+      th:[{t:'hot',i:'🔴',l:'ระวัง',txt:'Core CPI ไม่ยอมลด → เงินเฟ้อฝังรากลึก Fed ต้องคงดอกเบี้ยสูงนาน'},{t:'ok',i:'🟢',l:'ดี',txt:'Core CPI ลงสู่ 2–2.5% → ส่งสัญญาณว่า Fed สามารถลดดอกเบี้ยได้'},{t:'info',i:'💡',l:'เทียบ CPI',txt:'ถ้า CPI สูงแต่ Core ต่ำ → เป็นเพราะราคาพลังงาน ไม่ใช่เงินเฟ้อโครงสร้าง'}],
+      en:[{t:'hot',i:'🔴',l:'Warning',txt:'Core CPI stuck high → entrenched inflation, Fed must keep rates elevated'},{t:'ok',i:'🟢',l:'Good',txt:'Core CPI falling to 2–2.5% → signals Fed has room to cut rates'},{t:'info',i:'💡',l:'vs CPI',txt:'If CPI is high but Core is low → energy prices are the driver, not structural inflation'}]
+    },
+    meta:{th:['เผยแพร่โดย <strong>BLS</strong>','เป้าหมาย Fed <strong>~2%</strong>','ออกพร้อม <strong>CPI</strong>'],
+          en:['Published by <strong>BLS</strong>','Fed target <strong>~2%</strong>','Released with <strong>CPI</strong>']}
+  },
+  {
+    icon:'💳', bg:'#fef3c7',
+    name:'PCE Price Index',
+    abbr:{th:'Personal Consumption Expenditures — YoY %', en:'Personal Consumption Expenditures — YoY %'},
+    desc:{
+      th:'วัดการเปลี่ยนแปลงราคาสินค้าและบริการที่ผู้บริโภคจ่ายจริง รวมทั้งที่จ่ายแทน (เช่น ประกันสุขภาพจากนายจ้าง) PCE<strong>ปรับ basket สินค้าได้ตามพฤติกรรมจริง</strong> Fed ใช้ตัวนี้เป็นเกณฑ์หลักกำหนดเป้าเงินเฟ้อ 2%',
+      en:'Measures price changes for all goods and services actually consumed, including third-party payments (e.g. employer health insurance). The PCE <strong>adjusts its basket dynamically</strong>. The Fed uses this as its primary 2% inflation benchmark.'
+    },
+    signals:{
+      th:[{t:'hot',i:'🔴',l:'ระวัง',txt:'PCE > 2.5% ต่อเนื่อง → Fed มีเหตุผลคงหรือขึ้นดอกเบี้ย'},{t:'ok',i:'🟢',l:'ดี',txt:'PCE ใกล้ 2% → บรรลุเป้า Fed มีพื้นที่ลดดอกเบี้ย'},{t:'info',i:'💡',l:'vs CPI',txt:'PCE มักต่ำกว่า CPI ~0.3–0.5% เพราะน้ำหนักสุขภาพและการศึกษาต่างกัน'}],
+      en:[{t:'hot',i:'🔴',l:'Warning',txt:'PCE > 2.5% sustained → Fed has justification to hold or hike rates'},{t:'ok',i:'🟢',l:'Good',txt:'PCE near 2% → target achieved, Fed has room to cut'},{t:'info',i:'💡',l:'vs CPI',txt:'PCE tends to run ~0.3–0.5% below CPI due to different weights for healthcare and education'}]
+    },
+    meta:{th:['เผยแพร่โดย <strong>BEA</strong>','เป้าหมาย Fed <strong>2.0%</strong>','ออกทุก <strong>สิ้นเดือน</strong>'],
+          en:['Published by <strong>BEA</strong>','Fed target <strong>2.0%</strong>','Released <strong>end of month</strong>']}
+  },
+  {
+    icon:'🎯', bg:'#dcfce7',
+    name:'Core PCE Price Index',
+    abbr:{th:'PCE พื้นฐาน — ไม่รวมอาหารและพลังงาน', en:'Core PCE — Excluding Food & Energy'},
+    desc:{
+      th:'ตัวชี้วัดที่<strong>Fed ให้ความสำคัญสูงสุด</strong>ในการตัดสินนโยบายดอกเบี้ย เป็น PCE ที่ตัดราคาอาหารและพลังงานออก ทำให้สะท้อนแนวโน้มเงินเฟ้อระยะยาวได้แม่นยำที่สุด',
+      en:'The indicator <strong>most closely watched by the Fed</strong> for interest rate decisions. It excludes food and energy from PCE, making it the most accurate long-term inflation trend indicator.'
+    },
+    signals:{
+      th:[{t:'hot',i:'🔴',l:'ระวัง',txt:'Core PCE > 2.5% → Fed ยังไม่มั่นใจ อาจชะลอหรือย้อนกลับการลดดอกเบี้ย'},{t:'ok',i:'🟢',l:'ดี',txt:'Core PCE ลงสู่ 2% → Fed มีความมั่นใจสูงว่าเงินเฟ้ออยู่ในเป้า'},{t:'watch',i:'⚠️',l:'จับตา',txt:'ดู Super Core PCE (บริการไม่รวมที่อยู่อาศัย) เป็นตัวชี้นำที่ละเอียดกว่า'}],
+      en:[{t:'hot',i:'🔴',l:'Warning',txt:'Core PCE > 2.5% → Fed not confident, may pause or reverse rate cuts'},{t:'ok',i:'🟢',l:'Good',txt:'Core PCE at 2% → Fed confident inflation is on target'},{t:'watch',i:'⚠️',l:'Watch',txt:'Also track Super Core PCE (services ex-housing) for a more granular signal'}]
+    },
+    meta:{th:['เผยแพร่โดย <strong>BEA</strong>','เป้าหมาย Fed <strong>2.0%</strong> (ตัวนี้)','ออกทุก <strong>สิ้นเดือน</strong>'],
+          en:['Published by <strong>BEA</strong>','This IS the Fed <strong>2.0%</strong> target','Released <strong>end of month</strong>']}
+  },
+  {
+    icon:'👷', bg:'#ccfbf1',
+    name:'Non-Farm Payrolls (NFP)',
+    abbr:{th:'การจ้างงานนอกภาคเกษตร — รายเดือน', en:'Non-Farm Payrolls — Monthly Change'},
+    desc:{
+      th:'จำนวนตำแหน่งงานใหม่ที่เพิ่มขึ้นในภาคธุรกิจ รัฐบาล และอุตสาหกรรม ยกเว้นเกษตรกรรม ทหาร และแรงงานอิสระ เป็นรายงานที่<strong>ตลาดจับตามองมากที่สุดในโลก</strong> ออกทุกวันศุกร์แรกของเดือน',
+      en:'New jobs added outside agriculture, covering business, government and industry. Excludes farming, military and self-employed. The <strong>most closely watched economic report in the world</strong>, released the first Friday of each month.'
+    },
+    signals:{
+      th:[{t:'hot',i:'🔴',l:'ระวัง',txt:'NFP ติดลบ → ระวังเศรษฐกิจถดถอย; NFP สูงมาก (>300K) → Fed อาจขึ้นดอกเบี้ย'},{t:'ok',i:'🟢',l:'ดี',txt:'NFP +150–200K/เดือน → ตลาดแรงงานสมดุล ไม่ร้อนเกินไป'},{t:'info',i:'💡',l:'ดูประกอบ',txt:'Unemployment Rate และ Labor Force Participation Rate'}],
+      en:[{t:'hot',i:'🔴',l:'Warning',txt:'Negative NFP → recession risk; Very high (>300K) → Fed may hike rates'},{t:'ok',i:'🟢',l:'Good',txt:'NFP +150–200K/month → balanced labor market, not overheating'},{t:'info',i:'💡',l:'Also watch',txt:'Unemployment Rate and Labor Force Participation Rate'}]
+    },
+    meta:{th:['เผยแพร่โดย <strong>BLS</strong>','ระดับปกติ <strong>+150–250K</strong>','ออกทุก <strong>ศุกร์แรกของเดือน</strong>'],
+          en:['Published by <strong>BLS</strong>','Normal level <strong>+150–250K</strong>','Released <strong>first Friday of month</strong>']}
+  },
+  {
+    icon:'💰', bg:'#f0fdf4',
+    name:'Average Hourly Earnings (AHE)',
+    abbr:{th:'ค่าจ้างเฉลี่ยรายชั่วโมง — YoY %', en:'Average Hourly Earnings — YoY %'},
+    desc:{
+      th:'อัตราการเติบโตของค่าแรงเฉลี่ยรายชั่วโมงของแรงงานภาคเอกชน เป็นตัวชี้วัด<strong>แรงกดดันเงินเฟ้อจากต้นทุนแรงงาน</strong> ค่าแรงสูงขึ้นมักถูกส่งต่อเป็นราคาสินค้า',
+      en:'Growth rate of the average hourly wage for private-sector workers. Signals <strong>labor-cost inflation pressure</strong>. Higher wages are often passed on to consumers as higher prices.'
+    },
+    signals:{
+      th:[{t:'hot',i:'🔴',l:'ระวัง',txt:'AHE > 4% ต่อเนื่อง → ค่าแรงเร่งตัวเกินผลิตภาพ เสี่ยง wage-price spiral'},{t:'ok',i:'🟢',l:'ดี',txt:'AHE 3–3.5% → ค่าแรงเพิ่มสอดคล้องกับผลิตภาพ เศรษฐกิจสมดุล'},{t:'watch',i:'⚠️',l:'จับตา',txt:'ดูร่วมกับ NFP — ค่าแรงสูง + งานเยอะ = ตลาดแรงงานร้อนแรง'}],
+      en:[{t:'hot',i:'🔴',l:'Warning',txt:'AHE > 4% sustained → wage growth outpacing productivity, wage-price spiral risk'},{t:'ok',i:'🟢',l:'Good',txt:'AHE 3–3.5% → wage growth in line with productivity, balanced economy'},{t:'watch',i:'⚠️',l:'Watch',txt:'Combine with NFP — high wages + high hiring = hot labor market'}]
+    },
+    meta:{th:['เผยแพร่โดย <strong>BLS</strong>','ระดับสมดุล <strong>~3–3.5% YoY</strong>','ออกพร้อม <strong>NFP</strong>'],
+          en:['Published by <strong>BLS</strong>','Balanced level <strong>~3–3.5% YoY</strong>','Released with <strong>NFP</strong>']}
+  },
+  {
+    icon:'🚢', bg:'#fef9c3',
+    name:'Import Prices',
+    abbr:{th:'ดัชนีราคานำเข้า — YoY %', en:'Import Price Index — YoY %'},
+    desc:{
+      th:'วัดการเปลี่ยนแปลงราคาสินค้าที่สหรัฐฯ นำเข้าจากต่างประเทศ เป็นตัวบ่งชี้<strong>แรงกดดันเงินเฟ้อจากภายนอกประเทศ</strong> ได้รับอิทธิพลจากค่าเงินดอลลาร์ ราคาน้ำมันโลก และห่วงโซ่อุปทาน',
+      en:'Measures price changes of goods imported into the US. Indicates <strong>external inflation pressure</strong>. Influenced by the US dollar, global oil prices, supply chains and trade tariffs.'
+    },
+    signals:{
+      th:[{t:'hot',i:'🔴',l:'ระวัง',txt:'Import Prices สูงขึ้นเร็ว → ต้นทุนนำเข้าแพง กดดัน CPI ตามมา 1–3 เดือน'},{t:'ok',i:'🟢',l:'ดี',txt:'Import Prices ติดลบหรือทรงตัว → ดอลลาร์แข็ง/สินค้าโลกถูกลง ช่วยลดเงินเฟ้อ'},{t:'watch',i:'⚠️',l:'จับตา',txt:'ภาษีนำเข้า (tariffs) ผลักราคาขึ้นโดยตรง ดูนโยบายการค้าประกอบ'}],
+      en:[{t:'hot',i:'🔴',l:'Warning',txt:'Rising import prices → higher import costs feed into CPI within 1–3 months'},{t:'ok',i:'🟢',l:'Good',txt:'Negative/flat → strong dollar or falling global prices helping reduce inflation'},{t:'watch',i:'⚠️',l:'Watch',txt:'Tariff hikes push import prices up directly — monitor trade policy'}]
+    },
+    meta:{th:['เผยแพร่โดย <strong>BLS</strong>','ชี้นำ CPI ล่วงหน้า <strong>1–3 เดือน</strong>','ออกทุก <strong>กลางเดือน</strong>'],
+          en:['Published by <strong>BLS</strong>','Leads CPI by <strong>1–3 months</strong>','Released <strong>mid-month</strong>']}
+  },
+];
+
+const CHAIN_TEXT = {
+  th:`<strong style="color:var(--text)">ห่วงโซ่เงินเฟ้อ:</strong> Import Prices ↑ → ต้นทุนธุรกิจสูงขึ้น → CPI/PCE ↑ → Fed ขึ้นดอกเบี้ย → การบริโภคชะลอ → เงินเฟ้อลด<br>
+     <strong style="color:var(--text)">ห่วงโซ่แรงงาน:</strong> NFP แข็งแกร่ง → AHE ↑ → กำลังซื้อสูง → Demand-pull Inflation → Core CPI/PCE ↑<br>
+     <strong style="color:var(--text)">เป้าหมาย Fed:</strong> ต้องการ Core PCE ที่ 2% + ตลาดแรงงานสมดุล — สองเป้าหมายนี้มักขัดกันในช่วงที่เศรษฐกิจร้อนแรง`,
+  en:`<strong style="color:var(--text)">Inflation Chain:</strong> Import Prices ↑ → Business costs rise → CPI/PCE ↑ → Fed hikes rates → Consumption slows → Inflation falls<br>
+     <strong style="color:var(--text)">Labor Chain:</strong> Strong NFP → AHE ↑ → Higher purchasing power → Demand-pull Inflation → Core CPI/PCE ↑<br>
+     <strong style="color:var(--text)">Fed's Dual Mandate:</strong> Core PCE at 2% + balanced labor market — these two goals often conflict when the economy is running hot`
+};
+
+function buildIndicators(){
+  const g = document.getElementById('ind-grid');
+  if(!g) return;
+  const L = currentLang;
+  g.innerHTML = IND_DATA.map(d=>`
+    <div class="ind-card">
+      <div class="ind-header">
+        <div class="ind-icon" style="background:${d.bg}">${d.icon}</div>
+        <div>
+          <div class="ind-name">${d.name}</div>
+          <div class="ind-abbr">${d.abbr[L]}</div>
+        </div>
+      </div>
+      <div class="ind-body">
+        <div class="ind-desc">${d.desc[L]}</div>
+        <div class="ind-signals">
+          ${d.signals[L].map(s=>`<div class="signal-row ${s.t}"><span class="sig-icon">${s.i}</span><span><strong>${s.l}:</strong> ${s.txt}</span></div>`).join('')}
+        </div>
+      </div>
+      <div class="ind-meta">
+        ${d.meta[L].map(m=>`<div class="meta-item">${m}</div>`).join('')}
+      </div>
+    </div>`).join('');
+
+  // Relationship box
+  const chainBox = document.getElementById('ind-chain');
+  if(chainBox) chainBox.innerHTML = CHAIN_TEXT[L];
+  const chainTitle = document.getElementById('ind-chain-title');
+  if(chainTitle) chainTitle.textContent = L==='en' ? '🔗 How the Indicators Connect' : '🔗 ความสัมพันธ์ระหว่างตัวชี้วัด';
+}
+
+// ── Guide/Sources tab ──
+function buildGuide(){
+  const isEN = currentLang === 'en';
+  // Source section heading & subtext
+  const h3s = document.getElementById('source-h3');
+  if(h3s) h3s.textContent = isEN ? '🔗 Data Sources' : '🔗 แหล่งข้อมูลอ้างอิง';
+  const sub = document.getElementById('source-sub');
+  if(sub) sub.textContent = isEN
+    ? 'Data is published on the US Economic Calendar each month.'
+    : 'ข้อมูลเผยแพร่ตามตาราง Economic Calendar ทุกเดือน';
+
+  // Source card descriptions
+  const SRC = {
+    'source-desc-cpi' : {th:'CPI, Core CPI, Import Prices<br>ออกทุก ~ต้นเดือน',       en:'CPI, Core CPI, Import Prices<br>Released ~mid-month'},
+    'source-desc-pce' : {th:'PCE, Core PCE<br>ออกทุก ~สิ้นเดือน',                     en:'PCE, Core PCE<br>Released ~end of month'},
+    'source-desc-fed' : {th:'Fed Funds Rate<br>ประชุม FOMC 8 ครั้ง/ปี',               en:'Fed Funds Rate<br>FOMC meets 8 times/year'},
+    'source-desc-emp' : {th:'NFP, Avg Hourly Earnings<br>Jobs Report วันศุกร์แรกของเดือน', en:'NFP, Avg Hourly Earnings<br>Jobs Report — first Friday of month'},
+    'source-desc-te'  : {th:'รวมทุกตัวชี้วัดในที่เดียว<br>ดูได้ง่าย พร้อมปฏิทิน',   en:'All indicators in one place<br>Easy to read, with calendar'},
+    'source-desc-fred': {th:'ข้อมูลย้อนหลังครบถ้วน<br>ดาวน์โหลด CSV ได้',           en:'Comprehensive historical data<br>Download as CSV'},
+    'source-desc-inv' : {th:'ปฏิทินเศรษฐกิจ Forecast/Actual<br>อัปเดตรายวัน',       en:'Economic calendar Forecast/Actual<br>Updated daily'},
+    'source-desc-fh'  : {th:'S&P 500 (SPY), Nasdaq (QQQ)<br>Real-time via API',       en:'S&P 500 (SPY), Nasdaq (QQQ)<br>Real-time via API'},
+    'source-desc-gold': {th:'Gold (XAU/USD)<br>Real-time via API',                     en:'Gold (XAU/USD)<br>Real-time via API'},
+  };
+  Object.entries(SRC).forEach(([cls, txt]) => {
+    document.querySelectorAll('.'+cls).forEach(el => { el.innerHTML = txt[isEN?'en':'th']; });
+  });
+
+}
+
+function buildTable(){
+  const rows=[];
+  const pct  = (v) => v===null||v===undefined ? '—' : v.toFixed(1)+'%';
+  const pct2 = (v) => v===null||v===undefined ? '—' : v.toFixed(2)+'%';
+  const fed  = (v) => v===null||v===undefined ? '—' : v.toFixed(2)+'%';
+  const nfpFmt = (v) => v===null||v===undefined ? '—' : (v>0?'+':'')+v;
+  const cc = (v,threshold=3) => v===null||v===undefined ? '' : v>=threshold?'cell-hot':v<=2?'cell-ok':'';
+
+  // สร้าง Real Yield lookup จาก yieldChartData (monthly, YYYY-MM format)
+  const realMap = {};
+  if(yieldChartData && yieldChartData.dates){
+    yieldChartData.dates.forEach((d,i)=>{
+      realMap[d] = yieldChartData.real[i]; // key = YYYY-MM
+    });
+  }
+
+  for(let i=MONTHS.length-1; i>=0; i--){
+    if(!MONTHS[i]) continue;
+
+    const nfp = DATA.nfp[i];
+    const nfpClass = (nfp!==null&&nfp!==undefined) ? (nfp<0?'cell-hot':nfp>200?'cell-ok':'') : '';
+    const impV = DATA.imp[i];
+    const impClass = (impV!==null&&impV!==undefined&&impV>2) ? 'cell-warn' : '';
+
+    // แปลง MONTHS[i] (เช่น "พ.ค. 26") → YYYY-MM (2026-05) เพื่อ lookup real yield
+    const mLabel = MONTHS[i];
+    const mParts = mLabel.split(' ');
+    const mIdx   = THAI_MONTH.indexOf(mParts[0]);
+    const mYear  = mParts[1] ? '20'+mParts[1] : null;
+    const mKey   = mYear && mIdx>=0 ? mYear+'-'+(mIdx<9?'0':'')+(mIdx+1) : null;
+    const realV  = mKey ? (realMap[mKey]??null) : null;
+    const realClass = realV!==null ? (realV<0?'cell-hot':'') : '';
+
+    rows.push(`<tr>
+      <td class="cell-month">${formatMonthLabel(MONTHS[i])}</td>
+      <td class="${cc(DATA.cpi[i])}">${pct(DATA.cpi[i])}</td>
+      <td class="${cc(DATA.coreCpi[i])}">${pct(DATA.coreCpi[i])}</td>
+      <td class="${cc(DATA.pce[i])}">${pct(DATA.pce[i])}</td>
+      <td class="${cc(DATA.corePce[i])}">${pct(DATA.corePce[i])}</td>
+      <td style="color:var(--purple);font-weight:500">${fed(DATA.fed[i])}</td>
+      <td class="${nfpClass}">${nfpFmt(nfp)}</td>
+      <td>${pct(DATA.ahe[i])}</td>
+      <td class="${impClass}">${pct(impV)}</td>
+      <td class="${realClass}" style="color:var(--teal);font-weight:500">${pct2(realV)}</td>
+    </tr>`);
+  }
+  document.getElementById('tbody').innerHTML = rows.join('');
+}
+
+function switchTab(name){
+  const names=['inflation','labor','annual','table','calendar','markets','indicators','guide'];
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',names[i]===name));
+  document.querySelectorAll('.tab-content').forEach(el=>el.classList.toggle('active',el.id==='tab-'+name));
+}
+
+// ══════════════════════════════════════════════
+//  LIVE DATA — FRED API via Cloudflare Worker
+// ══════════════════════════════════════════════
+const FRED_WORKER = 'https://worker-abc-123.kritsanukritsanakul.workers.dev';
+
+// ══════════════════════════════════════════════
+//  MARKET DATA APIs
+//  Gold      → GoldAPI.io
+//  S&P500    → Finnhub (/quote)
+//  Nasdaq    → Finnhub (/quote)
+//  Calendar  → FMP (Financial Modeling Prep)
+// ══════════════════════════════════════════════
+const FINNHUB_KEY  = 'd8oi719r01qrbfflrjjgd8oi719r01qrbfflrjk0';
+const GOLDAPI_KEY  = 'goldapi-ba13528849c1261d1b338be3daa2a908-io';
+const FMP_KEY      = '2CV9DDzhh7s3ZUxdywnlwhb4Su86Pmpw';
+const TWELVE_KEY   = 'fd1f4f0a2f9d4ccfaa4eb99f77eb5bad'; // Twelve Data — ใช้สำหรับ XAU/USD monthly
+
+function fmtPrice(v, prefix=''){
+  if(v >= 1000) return prefix + v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  return prefix + v.toFixed(2);
+}
+function chipClass(pct){ return pct >= 0 ? 'chip-dn' : 'chip-up'; }
+function chipArrow(pct){ return pct >= 0 ? '▲' : '▼'; }
+function pctLabel(pct){ return (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%'; }
+function signalText(name, pct, source, lang){
+  const dir = pct >= 0 ? (lang==='en' ? 'up' : 'ขึ้น') : (lang==='en' ? 'down' : 'ลง');
+  return lang==='en'
+    ? `${name} ${dir} ${pctLabel(pct)} — live from ${source}`
+    : `${name} ${dir} ${pctLabel(pct)} — ราคาสดจาก ${source}`;
+}
+
+// ── Gold via GoldAPI.io ──
+async function fetchGold(){
+  const res = await fetch('https://www.goldapi.io/api/XAU/USD', {
+    headers: { 'x-access-token': GOLDAPI_KEY, 'Content-Type': 'application/json' }
+  });
+  if(!res.ok) throw new Error('GoldAPI fetch failed: '+res.status);
+  const d = await res.json();
+  const price   = d.price;
+  const open    = d.open_price || price;
+  const change  = price - open;
+  const pct     = open ? ((price - open) / open * 100) : 0;
+  return { price, pct, change, datetime: d.timestamp ? new Date(d.timestamp*1000).toLocaleString() : '—', source:'GoldAPI.io' };
+}
+
+// ── Gold Monthly Historical via Finnhub FOREX candle ──
+let goldSeriesData = null;
+let goldChartObj   = null;
+
+async function fetchGoldMonthly(){
+  // ดึง XAU/USD รายเดือนจาก Twelve Data /time_series endpoint
+  // outputsize=36 = 36 เดือนย้อนหลัง, interval=1month
+  const url = `https://api.twelvedata.com/time_series?symbol=XAU/USD&interval=1month&outputsize=36&apikey=${TWELVE_KEY}`;
+  const res = await fetch(url);
+  if(!res.ok) throw new Error('Twelve Data gold time series failed: '+res.status);
+  const d = await res.json();
+  if(d.status === 'error') throw new Error('Twelve Data: '+d.message);
+  if(!d.values || !d.values.length) throw new Error('Twelve Data: no values');
+
+  // values เรียงจากใหม่ → เก่า ต้อง reverse
+  const sorted = [...d.values].reverse();
+  const dates  = sorted.map(v => v.datetime.slice(0,7)); // YYYY-MM
+  const closes = sorted.map(v => parseFloat(v.close));
+  return { dates, closes };
+}
+
+function buildGoldChart(){
+  const d = goldSeriesData;
+  if(!d || !d.dates || !d.dates.length) return;
+  const isEN = currentLang==='en';
+
+  if(goldChartObj){ goldChartObj.destroy(); goldChartObj = null; }
+  const ctx = document.getElementById('c-gold-monthly');
+  if(!ctx) return;
+
+  goldChartObj = new Chart(ctx, {
+    type:'line',
+    data:{
+      labels: d.dates,
+      datasets:[{
+        label: isEN ? 'Gold (XAU/USD) Monthly Close' : 'ทองคำ (XAU/USD) ราคาปิดรายเดือน',
+        data: d.closes,
+        borderColor:'#d97706',
+        backgroundColor:'rgba(217,119,6,0.08)',
+        fill:true,
+        borderWidth:2, tension:.3, spanGaps:true,
+        pointRadius:2, pointHoverRadius:5,
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index', intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          backgroundColor:'#1a1d27', borderColor:'rgba(255,255,255,.1)', borderWidth:1,
+          titleColor:'#8890a4', bodyColor:'#f5f6f8',
+          titleFont:{family:'Sarabun',size:11}, bodyFont:{family:'IBM Plex Mono',size:12},
+          padding:10,
+          callbacks:{
+            label:ctx=>{ const v=ctx.parsed.y; return v!==null?` $${v.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})}`:'—'; }
+          }
+        }
+      },
+      scales:{
+        x:{ticks:{color:'#9098b0',font:{family:'IBM Plex Mono',size:9},maxRotation:45,autoSkip:true,maxTicksLimit:14},grid:{color:'rgba(0,0,0,.05)'}},
+        y:{ticks:{color:'#9098b0',font:{family:'IBM Plex Mono',size:10},callback:v=>'$'+v.toLocaleString('en-US',{maximumFractionDigits:0})},grid:{color:'rgba(0,0,0,.05)'}},
+      }
+    }
+  });
+}
+
+// ── Stocks via Finnhub ──
+async function fetchFinnhubQuote(symbol){
+  const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${FINNHUB_KEY}`);
+  if(!res.ok) throw new Error('Finnhub quote failed: '+symbol+' '+res.status);
+  const d = await res.json();
+  if(!d || d.c === undefined || d.c === null || d.c === 0) throw new Error('No data for '+symbol);
+  const price  = d.c;
+  const prev   = d.pc || price;
+  const change = price - prev;
+  const pct    = prev ? ((price - prev) / prev * 100) : 0;
+  const ts     = d.t ? new Date(d.t*1000).toLocaleString() : '—';
+  return { price, pct, change, datetime: ts, source:'Finnhub' };
+}
+
+async function fetchMarketData(){
+  // SPY = S&P 500 ETF, QQQ = Nasdaq ETF (Finnhub free plan supports ETFs not indices)
+  const [gold, sp500, nasdaq] = await Promise.allSettled([
+    fetchGold(),
+    fetchFinnhubQuote('SPY'),
+    fetchFinnhubQuote('QQQ'),
+  ]);
+  return {
+    gold:   gold.status   === 'fulfilled' ? gold.value   : null,
+    sp500:  sp500.status  === 'fulfilled' ? sp500.value  : null,
+    nasdaq: nasdaq.status === 'fulfilled' ? nasdaq.value : null,
+  };
+}
+
+function updateMarketCard(idPrefix, name, data, prefix=''){
+  const isEN = currentLang==='en';
+  const valEl  = document.getElementById(`mkt-${idPrefix}-value`);
+  const chipEl = document.getElementById(`mkt-${idPrefix}-chip`);
+  const subEl  = document.getElementById(`mkt-${idPrefix}-sub`);
+  const sigEl  = document.getElementById(`mkt-${idPrefix}-signal`);
+  if(!valEl) return;
+  if(!data || data.price === undefined || data.price === null || isNaN(data.price)){
+    chipEl.className   = 'chip chip-neu';
+    chipEl.textContent = '—';
+    subEl.textContent  = isEN ? 'Could not load — check console' : 'โหลดไม่สำเร็จ';
+    if(sigEl) sigEl.textContent = '';
+    return;
+  }
+  valEl.textContent  = fmtPrice(data.price, prefix);
+  chipEl.className   = 'chip ' + chipClass(data.pct);
+  chipEl.textContent = chipArrow(data.pct) + ' ' + pctLabel(data.pct);
+  subEl.textContent  = isEN
+    ? `As of ${data.datetime} (${data.source})`
+    : `ณ ${data.datetime} (${data.source})`;
+  if(sigEl) sigEl.textContent = signalText(name, data.pct, data.source, isEN);
+}
+
+function applyMarketData(mkt){
+  updateMarketCard('gold',   'Gold',    mkt.gold,   '$');
+  updateMarketCard('sp500',  'S&P 500', mkt.sp500,  '');
+  updateMarketCard('nasdaq', 'Nasdaq',  mkt.nasdaq, '');
+  const ts = new Date().toLocaleString(currentLang==='en'?'en-US':'th-TH',{dateStyle:'medium',timeStyle:'short'});
+
+}
+
+// ── Economic Calendar via FMP ──
+// ── Economic Calendar Forecasts — Static fallback (อัปเดตด้วยมือทุกเดือน) ──
+// Consensus จาก Bloomberg/Reuters ก่อนประกาศ
+const STATIC_FORECASTS = {
+  '2026-07-02-NFP':  { forecast: '+120K',  note: 'Consensus est.' },
+  '2026-07-14-CPI':  { forecast: '3.8%',   note: 'Consensus est.' },
+  '2026-07-29-FOMC': { forecast: '3.75%–4.00%', note: 'Market pricing' },
+  '2026-07-30-GDP':  { forecast: '+1.8%',  note: 'Advance est.' },
+  '2026-08-07-NFP':  { forecast: null,     note: null },
+  '2026-08-12-CPI':  { forecast: null,     note: null },
+  '2026-08-27-PCE':  { forecast: null,     note: null },
+  '2026-09-04-NFP':  { forecast: null,     note: null },
+  '2026-09-11-CPI':  { forecast: null,     note: null },
+  '2026-09-15-FOMC': { forecast: null,     note: null },
+  '2026-09-25-PCE':  { forecast: null,     note: null },
+  '2026-10-02-NFP':  { forecast: null,     note: null },
+  '2026-10-14-CPI':  { forecast: null,     note: null },
+  '2026-10-27-FOMC': { forecast: null,     note: null },
+  '2026-10-29-GDP':  { forecast: null,     note: null },
+  '2026-10-30-PCE':  { forecast: null,     note: null },
+  '2026-11-06-NFP':  { forecast: null,     note: null },
+  '2026-11-12-CPI':  { forecast: null,     note: null },
+  '2026-11-25-PCE':  { forecast: null,     note: null },
+  '2026-12-04-NFP':  { forecast: null,     note: null },
+  '2026-12-08-FOMC': { forecast: '3.75% หรือ 4.00%', note: 'Market pricing' },
+  '2026-12-10-CPI':  { forecast: null,     note: null },
+  '2026-12-23-PCE':  { forecast: null,     note: null },
+};
+
+async function fetchFinnhubEconCalendar(){
+  const today = new Date();
+  const from  = today.toISOString().slice(0,10);
+  const to    = new Date(today.getTime() + 90*24*60*60*1000).toISOString().slice(0,10);
+  const url   = `https://finnhub.io/api/v1/calendar/economic?from=${from}&to=${to}&token=${FINNHUB_KEY}`;
+  const res   = await fetch(url);
+  if(!res.ok) throw new Error('Finnhub calendar failed: '+res.status);
+  const json  = await res.json();
+  return json.economicCalendar || [];
+}
+
+const FMP_TYPE_MAP = [
+  { match:/consumer price index|CPI/i,             type:'CPI',  color:'#dc2626', impact:'high' },
+  { match:/personal consumption|PCE|core pce/i,    type:'PCE',  color:'#d97706', impact:'high' },
+  { match:/nonfarm payroll|non.farm|employment situation|NFP/i, type:'NFP', color:'#16a34a', impact:'high' },
+  { match:/gross domestic|GDP/i,                   type:'GDP',  color:'#2563eb', impact:'high' },
+  { match:/FOMC|federal open|interest rate/i,      type:'FOMC', color:'#7c3aed', impact:'high' },
+  { match:/import price|import.*price/i,            type:'IMP',  color:'#d97706', impact:'med'  },
+];
+
+function classifyFMPEvent(name){
+  for(const rule of FMP_TYPE_MAP){
+    if(rule.match.test(name)) return rule;
+  }
+  return null;
+}
+
+function fmtFMPValue(v, type){
+  if(v===null || v===undefined || v==='') return null;
+  const n = parseFloat(v);
+  if(isNaN(n)) return null;
+  if(type==='NFP') return (n>1000 ? (n/1000).toFixed(0)+'K' : n+'K');
+  return n.toFixed(1)+'%';
+}
+
+// ใช้ static forecast เป็น baseline ก่อน แล้ว override ด้วย live API
+function applyStaticForecasts(){
+  CALENDAR.forEach(ev => {
+    if(!['CPI','NFP','PCE','FOMC','GDP'].includes(ev.type)) return;
+    const key = `${ev.date}-${ev.type}`;
+    const sf  = STATIC_FORECASTS[key];
+    if(sf && sf.forecast && !ev.forecast){
+      ev.forecast = sf.forecast;
+      ev.forecastNote = sf.note;
+    }
+  });
+}
+
+async function fetchAndMergeCalendar(){
+  // Step 1: Apply static forecasts as baseline
+  applyStaticForecasts();
+  renderCalendar();
+
+  // Step 2: Try Finnhub for live actual + estimate (overrides static)
+  try {
+    const live = await fetchFinnhubEconCalendar();
+    let updated = 0;
+    live.forEach(ev => {
+      if(!ev.event || !ev.date) return;
+      const cls = classifyFMPEvent(ev.event);
+      if(!cls || !['high'].includes(cls.impact)) return; // เฉพาะ High Impact
+      const dateStr = ev.date.slice(0,10);
+      const match = CALENDAR.find(c => c.date === dateStr && c.type === cls.type);
+      if(match){
+        const fc = fmtFMPValue(ev.estimate, cls.type);
+        const ac = fmtFMPValue(ev.actual,   cls.type);
+        const pr = fmtFMPValue(ev.prev,     cls.type);
+        if(fc !== null){ match.forecast = fc; match.forecastNote = 'Finnhub live'; }
+        if(ac !== null)  match.actual   = ac;
+        if(pr !== null)  match.prev     = pr;
+        updated++;
+      }
+    });
+    CALENDAR.sort((a,b) => a.date.localeCompare(b.date));
+    renderCalendar();
+
+    const banner = document.getElementById('cal-status-banner');
+    if(banner){
+      banner.style.background = '#f0fdf4';
+      banner.style.borderColor = '#bbf7d0';
+      banner.style.color = '#166534';
+      banner.innerHTML = currentLang==='en'
+        ? `🟢 <strong>Calendar</strong> — Static forecasts + Finnhub live data (${updated} events updated)`
+        : `🟢 <strong>ปฏิทิน</strong> — ค่าคาดการณ์ static + Finnhub อัปเดตสด (${updated} กิจกรรม)`;
+    }
+  } catch(err){
+    console.warn('Finnhub calendar error:', err.message);
+    // ยังมี static forecasts แสดงอยู่ ไม่ต้องแสดง error
+    const banner = document.getElementById('cal-status-banner');
+    if(banner){
+      banner.style.background = '#fffbeb';
+      banner.style.borderColor = '#fde68a';
+      banner.style.color = '#92400e';
+      banner.innerHTML = currentLang==='en'
+        ? `📅 <strong>Calendar</strong> — Showing consensus forecasts (Finnhub live unavailable)`
+        : `📅 <strong>ปฏิทิน</strong> — แสดงค่าคาดการณ์ consensus (Finnhub ไม่สำเร็จ)`;
+    }
+  }
+}
+
+const FRED_SERIES = {
+  fed:     {id:'FEDFUNDS',       transform:'percent'},  // Fed Funds Rate — ค่าตรง %
+  cpi:     {id:'CPIAUCSL',       transform:'yoy'},      // CPI — ดึง level แล้วคำนวณ YoY เอง (ครบทุกเดือน)
+  coreCpi: {id:'CPILFESL',       transform:'yoy'},      // Core CPI — ดึง level แล้วคำนวณ YoY เอง
+  pce:     {id:'PCEPI',          transform:'yoy'},      // PCE — ดึง level แล้วคำนวณ YoY เอง
+  corePce: {id:'PCEPILFE',       transform:'yoy'},      // Core PCE — ดึง level แล้วคำนวณ YoY เอง
+  nfp:     {id:'PAYEMS',         transform:'mom_fred'}, // NFP — FRED คำนวณ MoM change (units=chg) ตรง BLS
+  ahe:     {id:'CES0500000003',  transform:'yoy'},      // AHE All Employees — ดึง level แล้วคำนวณ YoY เอง
+  imp:     {id:'IR',             transform:'yoy'},      // Import Price Index — ดึง level แล้วคำนวณ YoY เอง
+};
+
+async function fetchFREDSeries(seriesId, extraParams=''){
+  const res = await fetch(`${FRED_WORKER}?series=${seriesId}${extraParams}`);
+  if(!res.ok) throw new Error('FRED fetch failed: '+seriesId);
+  const json = await res.json();
+  return json.observations
+    .filter(o => o.value !== '.')
+    .map(o => ({date:o.date, value:parseFloat(o.value)}))
+    .reverse(); // oldest -> newest
+}
+
+function computeYoY(series){
+  return series.map((d,i)=> i<12 ? null : ((d.value/series[i-12].value - 1)*100));
+}
+function computeMoM(series){
+  return series.map((d,i)=> i<1 ? null : (d.value - series[i-1].value));
+}
+
+function thaiMonthLabel(dateStr){
+  const d = new Date(dateStr+'T00:00:00');
+  return THAI_MONTH[d.getMonth()] + ' ' + String(d.getFullYear()).slice(-2);
+}
+
+async function fetchLiveData(){
+  // Fetch all series in parallel
+  const entries = Object.entries(FRED_SERIES);
+  const results = await Promise.all(
+    entries.map(([key,cfg]) => {
+      let extra = '';
+      if(cfg.transform === 'mom_fred') extra = '&units=chg';
+      if(cfg.transform === 'pc1')      extra = '&units=pc1';  // ให้ FRED คำนวณ % เปลี่ยนแปลงจากปีก่อนให้โดยตรง
+      return fetchFREDSeries(cfg.id, extra);
+    })
+  );
+
+  const processed = {};
+  let referenceDates = null;
+
+  entries.forEach(([key,cfg], idx) => {
+    const raw = results[idx];
+    let values, dates;
+    if(cfg.transform === 'percent'){
+      values = raw.map(d=>d.value);
+      dates  = raw.map(d=>d.date);
+    } else if(cfg.transform === 'pc1'){
+      // FRED คำนวณ YoY % โดยตรง (units=pc1) — ตรงกับที่ BLS/BEA รายงานทางการ
+      values = raw.map(d=>d.value);
+      dates  = raw.map(d=>d.date);
+    } else if(cfg.transform === 'yoy'){
+      values = computeYoY(raw);
+      dates  = raw.map(d=>d.date);
+    } else if(cfg.transform === 'mom'){
+      values = computeMoM(raw);
+      dates  = raw.map(d=>d.date);
+    } else if(cfg.transform === 'mom_fred'){
+      // FRED already computed MoM change (units=chg) — use directly, matches BLS official release
+      values = raw.map(d=>d.value);
+      dates  = raw.map(d=>d.date);
+    }
+    processed[key] = {values, dates};
+    // ใช้ NFP เป็น reference เพราะออกก่อน CPI และมีข้อมูลล่าสุดเสมอ
+    if(key === 'nfp') referenceDates = dates;
+  });
+
+  // Take last 28 months based on reference dates
+  const N = 28;
+  const refDates = referenceDates.slice(-N);
+  const newMonths = refDates.map(thaiMonthLabel);
+
+  const newData = {};
+  entries.forEach(([key,cfg]) => {
+    const {values, dates} = processed[key];
+    // align by date to refDates
+    newData[key] = refDates.map(rd => {
+      const i = dates.indexOf(rd);
+      if(i === -1) return null;
+      const v = values[i];
+      return (v===null || v===undefined || isNaN(v)) ? null : v;
+    });
+  });
+
+  // 10Y Nominal (DGS10), Real Yield (DFII10), Breakeven Inflation (T10YIE)
+  let dgs10Latest = null, dgs10Date = null;
+  let realYieldLatest = null, realYieldDate = null;
+  let yieldSeries = {nominal:[], real:[], breakeven:[], dates:[]};
+  try {
+    const [dgs10raw, dfii10raw, t10yie] = await Promise.all([
+      fetchFREDSeries('DGS10'),
+      fetchFREDSeries('DFII10'),
+      fetchFREDSeries('T10YIE'),
+    ]);
+    // Latest values for KPI cards
+    const lastN = dgs10raw[dgs10raw.length-1];
+    dgs10Latest = lastN.value; dgs10Date = lastN.date;
+    const lastR = dfii10raw[dfii10raw.length-1];
+    realYieldLatest = lastR.value; realYieldDate = lastR.date;
+
+    // Monthly time series — resample daily to monthly (last value of each month)
+    function toMonthly(series){
+      const map = {};
+      series.forEach(d=>{
+        const ym = d.date.slice(0,7); // YYYY-MM
+        map[ym] = d.value; // overwrite = last value of month
+      });
+      return map;
+    }
+    const nmMap = toMonthly(dgs10raw);
+    const rlMap = toMonthly(dfii10raw);
+    const beMap = toMonthly(t10yie);
+    // Union of all dates sorted
+    const allYM = [...new Set([...Object.keys(nmMap),...Object.keys(rlMap),...Object.keys(beMap)])].sort();
+    yieldSeries = {
+      dates:     allYM.map(ym=>ym.slice(0,4)+'-'+ym.slice(5)),   // YYYY-MM display
+      nominal:   allYM.map(ym=>nmMap[ym]??null),
+      real:      allYM.map(ym=>rlMap[ym]??null),
+      breakeven: allYM.map(ym=>beMap[ym]??null),
+    };
+  } catch(e){ console.warn('Yield series fetch error:', e); }
+
+  return {
+    months:newMonths, data:newData,
+    dgs10:{value:dgs10Latest, date:dgs10Date},
+    real:{value:realYieldLatest, date:realYieldDate},
+    yieldSeries,
+  };
+}
+
+function applyLiveData(live){
+  // Mutate MONTHS in place
+  MONTHS.length = 0;
+  live.months.forEach(m=>MONTHS.push(m));
+
+  // Mutate DATA arrays in place
+  Object.keys(live.data).forEach(key=>{
+    DATA[key].length = 0;
+    live.data[key].forEach(v=>DATA[key].push(v));
+  });
+
+  // Update 10Y Nominal Yield (Markets + Overview removed per user)
+  if(live.dgs10 && live.dgs10.value !== null){
+    ['mkt-dgs10-value'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent = live.dgs10.value.toFixed(2)+'%'; });
+    ['mkt-dgs10-date'].forEach(id=>{ const el=document.getElementById(id); if(el) el.dataset.fredDate = live.dgs10.date; });
+    updateDgs10Date();
+  }
+
+  // Update 10Y Real Yield (TIPS) — Markets tab + Overview
+  if(live.real && live.real.value !== null){
+    updateRealYield(live.real.value, live.real.date);
+  }
+
+  // Store yield time series for chart
+  if(live.yieldSeries && live.yieldSeries.dates && live.yieldSeries.dates.length){
+    yieldChartData = live.yieldSeries;
+    buildYieldChart();
+  }
+}
+
+// ─── Yield Chart (Markets tab) ───────────────────
+let yieldChartData = null;
+let yieldChartObj  = null;
+let yieldVisible   = {nominal:true, real:true, breakeven:true};
+
+function buildYieldChart(){
+  const d = yieldChartData;
+  if(!d || !d.dates || !d.dates.length) return;
+  const isEN = currentLang==='en';
+
+  const labels = {
+    nominal:   isEN ? '10Y Nominal Yield'            : '10Y Nominal Yield',
+    real:      isEN ? '10Y Real Yield (TIPS)'        : '10Y Real Yield (TIPS)',
+    breakeven: isEN ? '10Y Breakeven Inflation'      : '10Y Breakeven Inflation',
+  };
+
+  const datasets = [
+    {id:'nominal',   label:labels.nominal,   data:d.nominal,   borderColor:'#7c3aed', backgroundColor:'transparent', borderWidth:2, tension:.35, spanGaps:true, pointRadius:0, pointHoverRadius:4},
+    {id:'real',      label:labels.real,      data:d.real,      borderColor:'#0891b2', backgroundColor:'transparent', borderWidth:2, tension:.35, spanGaps:true, pointRadius:0, pointHoverRadius:4},
+    {id:'breakeven', label:labels.breakeven, data:d.breakeven, borderColor:'#dc2626', backgroundColor:'transparent', borderWidth:2, borderDash:[5,3], tension:.35, spanGaps:true, pointRadius:0, pointHoverRadius:4},
+  ].map(ds=>({...ds, hidden: !yieldVisible[ds.id]}));
+
+  if(yieldChartObj){ yieldChartObj.destroy(); yieldChartObj = null; }
+  const ctx = document.getElementById('c-yield');
+  if(!ctx) return;
+
+  yieldChartObj = new Chart(ctx, {
+    type:'line',
+    data:{labels: d.dates, datasets},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index', intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          backgroundColor:'#1a1d27', borderColor:'rgba(255,255,255,.1)', borderWidth:1,
+          titleColor:'#8890a4', bodyColor:'#f5f6f8',
+          titleFont:{family:'Sarabun',size:11}, bodyFont:{family:'IBM Plex Mono',size:12},
+          padding:10,
+          callbacks:{label:ctx=>{ const v=ctx.parsed.y; return v!==null?` ${ctx.dataset.label}: ${v.toFixed(2)}%`:''; }}
+        }
+      },
+      scales:{
+        x:{ticks:{color:'#9098b0',font:{family:'IBM Plex Mono',size:9},maxRotation:45,autoSkip:true,maxTicksLimit:14},grid:{color:'rgba(0,0,0,.05)'}},
+        y:{ticks:{color:'#9098b0',font:{family:'IBM Plex Mono',size:10},callback:v=>v.toFixed(1)+'%'},grid:{color:'rgba(0,0,0,.05)'}},
+      }
+    }
+  });
+  renderYieldLegend(labels);
+}
+
+function renderYieldLegend(labels){
+  const leg = document.getElementById('yield-legend');
+  if(!leg) return;
+  const isEN = currentLang==='en';
+  const items = [
+    {id:'nominal',   color:'#7c3aed', dash:false},
+    {id:'real',      color:'#0891b2', dash:false},
+    {id:'breakeven', color:'#dc2626', dash:true},
+  ];
+  leg.innerHTML = items.map(it=>`
+    <button onclick="toggleYieldSeries('${it.id}')" id="yield-leg-${it.id}"
+      style="display:flex;align-items:center;gap:6px;background:${yieldVisible[it.id]?'var(--surface2)':'transparent'};
+             border:1px solid ${yieldVisible[it.id]?it.color:'var(--border)'};border-radius:20px;
+             padding:5px 12px;cursor:pointer;font-family:var(--sans);font-size:12px;
+             color:${yieldVisible[it.id]?'var(--text)':'var(--text3)'};transition:all .15s">
+      <span style="width:16px;height:2px;background:${it.dash?'transparent':''+it.color};
+                   ${it.dash?'border-top:2px dashed '+it.color:''};display:inline-block"></span>
+      ${labels[it.id]}
+    </button>`).join('');
+}
+
+function toggleYieldSeries(id){
+  yieldVisible[id] = !yieldVisible[id];
+  if(!yieldChartObj) return;
+  const ds = yieldChartObj.data.datasets.find(d=>d.id===id);
+  if(ds){ ds.hidden = !yieldVisible[id]; yieldChartObj.update(); }
+  // Re-render legend buttons
+  const isEN = currentLang==='en';
+  const labels = {
+    nominal:   isEN?'10Y Nominal Yield':'10Y Nominal Yield',
+    real:      isEN?'10Y Real Yield (TIPS)':'10Y Real Yield (TIPS)',
+    breakeven: isEN?'10Y Breakeven Inflation':'10Y Breakeven Inflation',
+  };
+  renderYieldLegend(labels);
+}
+
+function updateRealYield(value, date){
+  const isEN = currentLang==='en';
+  const pct  = value.toFixed(2)+'%';
+  const chip = value >= 0 ? 'chip-dn' : 'chip-up';  // ติดลบ = เป็นลบ = ผิดปกติ (chip-up=แดง)
+  const arr  = value >= 0 ? '▲' : '▼';
+  const sub  = (isEN ? 'Updated ' : 'อัปเดต ') + date + ' (FRED DFI10)';
+
+  ['mkt-real-value','ov-real-value'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.textContent = pct;
+  });
+  ['mkt-real-chip','ov-real-chip'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el){ el.className = 'chip '+chip; el.textContent = arr; }
+  });
+  ['mkt-real-date','ov-real-date'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.textContent = sub;
+  });
+}
+
+function updateDgs10Date(){
+  ['mkt-dgs10-date','ov-dgs10-date'].forEach(id=>{
+    const dateEl = document.getElementById(id);
+    if(!dateEl || !dateEl.dataset.fredDate) return;
+    dateEl.textContent = (currentLang==='en' ? 'Updated ' : 'อัปเดต ') + dateEl.dataset.fredDate + ' (FRED)';
+  });
+}
+
+let lastFetchTime = null;
+
+function setStatus(state, extra=''){
+  const dot = document.getElementById('status-dot');
+  const text = document.getElementById('status-text');
+  const banner = document.getElementById('update-banner');
+  const isEN = currentLang==='en';
+  if(state === 'live'){
+    dot.style.background = '#16a34a';
+    const monthLabel = formatMonthLabel(MONTHS[MONTHS.length-1]);
+    text.innerHTML = isEN
+      ? `🟢 Live data (FRED API) — Latest: <strong>${monthLabel}</strong> ${extra}`
+      : `🟢 ข้อมูลสด (FRED API) — อัปเดตล่าสุด: <strong>${monthLabel}</strong> ${extra}`;
+    banner.style.display = 'none';
+  } else if(state === 'error'){
+    dot.style.background = '#dc2626';
+    text.innerHTML = isEN
+      ? `🔴 Could not connect to FRED — showing saved fallback data`
+      : `🔴 เชื่อมต่อ FRED ไม่สำเร็จ — แสดงข้อมูลสำรองที่บันทึกไว้`;
+    banner.innerHTML = isEN
+      ? `⚠️ Failed to fetch data from FRED API — showing fallback data instead.
+        Try <button onclick="location.reload()" style="font-size:12px;padding:3px 10px;border-radius:5px;border:1px solid var(--border);background:var(--surface);cursor:pointer">Refresh page</button>
+        or check the Worker URL / API Key`
+      : `⚠️ ดึงข้อมูลจาก FRED API ไม่สำเร็จ — แสดงข้อมูลสำรองในไฟล์แทน
+        ลองกดปุ่ม <button onclick="location.reload()" style="font-size:12px;padding:3px 10px;border-radius:5px;border:1px solid var(--border);background:var(--surface);cursor:pointer">รีเฟรชหน้า</button>
+        หรือตรวจสอบ Worker URL / API Key`;
+    banner.style.display = 'flex';
+    banner.style.alignItems = 'center';
+    banner.style.gap = '10px';
+  }
+}
+
+function updateFreshness(){
+  const monthEl = document.getElementById('fresh-month');
+  const timeEl = document.getElementById('fresh-time');
+  if(!monthEl) return;
+  const lastIdx = MONTHS.length-1;
+  monthEl.textContent = MONTHS[lastIdx] ? formatMonthLabel(MONTHS[lastIdx]) : '—';
+  if(timeEl){
+    if(lastFetchTime){
+      timeEl.textContent = lastFetchTime.toLocaleString(currentLang==='en'?'en-US':'th-TH', {dateStyle:'medium', timeStyle:'short'});
+    } else {
+      timeEl.textContent = currentLang==='en' ? 'fallback data' : 'ข้อมูลสำรอง';
+    }
+  }
+}
+
+// ══════════════════════════════════════════════
+//  LANGUAGE SWITCHER (TH / EN)
+// ══════════════════════════════════════════════
+let currentLang = 'th';
+
+const TRANSLATIONS = {
+  'overview-title': {th:'ภาพรวมล่าสุด', en:'Latest Overview'},
+  'data-as-of':     {th:'📅 ข้อมูล ณ เดือน', en:'📅 Data as of'},
+  'last-fetched':   {th:'ดึงข้อมูลล่าสุดเมื่อ', en:'Last fetched at'},
+  'tab-inflation':  {th:'เงินเฟ้อ', en:'Inflation'},
+  'tab-labor':      {th:'ตลาดแรงงาน', en:'Labor Market'},
+  'tab-annual':     {th:'รายปี', en:'Annual'},
+  'tab-table':      {th:'ตารางข้อมูล', en:'Data Table'},
+  'tab-calendar':   {th:'ปฏิทินเศรษฐกิจ', en:'Economic Calendar'},
+  'tab-markets':    {th:'ตลาดการเงิน', en:'Markets'},
+  'tab-indicators': {th:'ความหมายตัวชี้วัด', en:'Indicator Guide'},
+  'tab-guide':      {th:'แหล่งข้อมูลอ้างอิง', en:'Data Sources'},
+  'chart-main-title': {th:'CPI, PCE และ Fed Funds Rate — รายเดือน', en:'CPI, PCE & Fed Funds Rate — Monthly'},
+  'chart-main-sub':   {th:'แนวโน้มอัตราเงินเฟ้อเทียบกับทิศทางดอกเบี้ยนโยบาย', en:'Inflation trend vs. monetary policy direction'},
+  'chart-cpi-title':  {th:'CPI vs Core CPI', en:'CPI vs Core CPI'},
+  'chart-cpi-sub':    {th:'เงินเฟ้อทั้งหมด vs ไม่รวมอาหาร-พลังงาน', en:'Headline vs ex food & energy'},
+  'chart-pce-title':  {th:'PCE vs Core PCE', en:'PCE vs Core PCE'},
+  'chart-pce-sub':    {th:'ตัวชี้วัดหลักของ Federal Reserve', en:"The Fed's preferred gauges"},
+  'chart-nfp-title':  {th:'Non-Farm Payrolls (NFP)', en:'Non-Farm Payrolls (NFP)'},
+  'chart-nfp-sub':    {th:'การจ้างงานนอกภาคเกษตร พัน/ตำแหน่ง — สีแดงคือติดลบ', en:'Jobs added outside agriculture (thousands) — red = negative'},
+  'chart-ahe-title':  {th:'Average Hourly Earnings YoY', en:'Average Hourly Earnings YoY'},
+  'chart-ahe-sub':    {th:'ค่าจ้างเฉลี่ยรายชั่วโมง เทียบปีก่อน', en:'Average hourly wage growth, year-over-year'},
+  'chart-imp-title':  {th:'Import Prices YoY', en:'Import Prices YoY'},
+  'chart-imp-sub':    {th:'ราคานำเข้า เทียบปีก่อน — บ่งบอกแรงกดดันเงินเฟ้อจากต่างประเทศ', en:'Import price growth — signals external inflation pressure'},
+  'chart-anncpi-title': {th:'CPI & Core CPI รายปี', en:'CPI & Core CPI — Annual'},
+  'chart-anncpi-sub':   {th:'ค่าเฉลี่ยทั้งปี 2021–2025', en:'Annual averages, 2021-2025'},
+  'chart-annfed-title': {th:'Fed Rate (ปลายปี) & Core PCE', en:'Fed Rate (year-end) & Core PCE'},
+  'chart-annfed-sub':   {th:'การปรับดอกเบี้ยเทียบเงินเฟ้อ PCE', en:'Rate path vs PCE inflation'},
+  'chart-annnfp-title': {th:'Non-Farm Payrolls รายปี', en:'Non-Farm Payrolls — Annual'},
+  'chart-annnfp-sub':   {th:'ค่าเฉลี่ยการจ้างงาน/เดือน (พัน)', en:'Average jobs added per month (thousands)'},
+  'th-month':   {th:'เดือน', en:'Month'},
+  'th-corecpi': {th:'Core CPI', en:'Core CPI'},
+  'th-corepce': {th:'Core PCE', en:'Core PCE'},
+  'th-fedrate': {th:'Fed Rate', en:'Fed Rate'},
+  'th-nfp':     {th:'NFP (พัน)', en:'NFP (K)'},
+  'th-imp':     {th:'Import Prices', en:'Import Prices'},
+  'th-real':    {th:'10Y Real Yield', en:'10Y Real Yield'},
+  'logo-sub':   {th:'สหรัฐอเมริกา', en:'United States'},
+  'view-label': {th:'มุมมอง:', en:'View:'},
+  'fed-axis':   {th:'Fed Rate (แกนขวา)', en:'Fed Rate (right axis)'},
+  'leg-cpi':    {th:'CPI YoY', en:'CPI YoY'},
+  'leg-corecpi':{th:'Core CPI YoY', en:'Core CPI YoY'},
+  'annual-view-annual': {th:'📊 รายปี (ค่าเฉลี่ยทั้งปี)', en:'📊 Annual (yearly averages)'},
+  'annual-view-compare':{th:'🔀 เปรียบเทียบระหว่างปี (รายเดือน)', en:'🔀 Year-over-Year Comparison (monthly)'},
+  'metric-cpi':    {th:'CPI YoY', en:'CPI YoY'},
+  'metric-coreCpi':{th:'Core CPI YoY', en:'Core CPI YoY'},
+  'metric-pce':    {th:'PCE YoY', en:'PCE YoY'},
+  'metric-corePce':{th:'Core PCE YoY', en:'Core PCE YoY'},
+  'metric-fed':    {th:'Fed Funds Rate', en:'Fed Funds Rate'},
+  'metric-nfp':    {th:'Non-Farm Payrolls', en:'Non-Farm Payrolls'},
+  'metric-ahe':    {th:'Avg Hourly Earnings', en:'Avg Hourly Earnings'},
+  'metric-imp':    {th:'Import Prices', en:'Import Prices'},
+  'export-excel':  {th:'Export เป็น Excel', en:'Export to Excel'},
+  'cal-all':  {th:'ทั้งหมด', en:'All'},
+  'cal-fomc': {th:'🏦 FOMC', en:'🏦 FOMC'},
+  'cal-cpi':  {th:'🛒 CPI', en:'🛒 CPI'},
+  'cal-nfp':  {th:'👷 Jobs Report', en:'👷 Jobs Report'},
+  'cal-pce':  {th:'💳 PCE', en:'💳 PCE'},
+  'cal-gdp':  {th:'📈 GDP', en:'📈 GDP'},
+  'cal-imp':  {th:'🚢 Import Prices', en:'🚢 Import Prices'},
+  'mkt-bond':   {th:'US 10Y Nominal Yield', en:'US 10Y Nominal Yield'},
+  'mkt-real':   {th:'US 10Y Real Yield (TIPS)', en:'US 10Y Real Yield (TIPS)'},
+  'real-body':  {th:'ผลตอบแทนพันธบัตร 10 ปี หลังหักเงินเฟ้อ (TIPS) = Nominal - Break-even Inflation สะท้อนผลตอบแทนที่แท้จริง',
+                  en:'10-Year Treasury yield adjusted for inflation (TIPS) = Nominal - Break-even Inflation. Shows the real return investors actually receive.'},
+  'real-signal':{th:'Real Yield สูง = กดดันทองคำและหุ้นเติบโต | ต่ำ/ติดลบ = หนุนทองคำ',
+                  en:'High real yield = pressure on gold & growth stocks | Low/negative = supportive for gold'},
+  'dgs10-body': {th:'อัตราผลตอบแทนพันธบัตรรัฐบาลสหรัฐ 10 ปี สะท้อนต้นทุนการกู้ยืมระยะยาวและความคาดหวังเงินเฟ้อ/ดอกเบี้ยในอนาคต',
+                  en:'Yield on US 10-Year Treasury bonds — reflects long-term borrowing costs and market expectations for inflation/interest rates'},
+  'dgs10-signal': {th:'ยิ่งสูง = ตลาดคาดเงินเฟ้อสูง/Fed อาจขึ้นดอกเบี้ย', en:'Higher = market expects higher inflation / possible Fed rate hikes'},
+  'mkt-gold':   {th:'Gold (XAU/USD)', en:'Gold (XAU/USD)'},
+  'mkt-sp500':  {th:'S&P 500 Index (SPY ETF)', en:'S&P 500 Index (SPY ETF)'},
+  'mkt-nasdaq': {th:'Nasdaq 100 (QQQ ETF)', en:'Nasdaq 100 (QQQ ETF)'},
+};
+
+function applyLang(){
+  const isEN = currentLang === 'en';
+
+  // 1. data-i18n elements
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const key = el.getAttribute('data-i18n');
+    const t = TRANSLATIONS[key];
+    if(t) el.textContent = t[currentLang];
+  });
+
+  // 2. data-i18n-opt (dropdown options)
+  document.querySelectorAll('[data-i18n-opt]').forEach(el=>{
+    const key = el.getAttribute('data-i18n-opt');
+    const t = TRANSLATIONS[key];
+    if(t) el.textContent = t[currentLang];
+  });
+
+  // 3. Lang toggle buttons
+  document.getElementById('lang-th').classList.toggle('active', !isEN);
+  document.getElementById('lang-en').classList.toggle('active', isEN);
+
+  // 4. Footer date
+  const footerEl = document.getElementById('footer-ts');
+  if(footerEl){
+    footerEl.textContent = (isEN ? 'Viewed: ' : 'เปิดดู: ') +
+      new Date().toLocaleString(isEN ? 'en-US' : 'th-TH', {dateStyle:'full'});
+  }
+
+  // 5. Markets tab banner
+  const mktBanner = document.querySelector('#tab-markets .update-banner');
+  if(mktBanner){
+    mktBanner.innerHTML = isEN
+      ? '🟢 <strong>Gold</strong> — GoldAPI.io &nbsp;|&nbsp; <strong>S&P 500 & Nasdaq</strong> — Finnhub &nbsp;|&nbsp; <strong>10Y Treasury Yield</strong> — FRED API &nbsp;|&nbsp; Updated each time you open the file'
+      : '🟢 <strong>Gold</strong> — GoldAPI.io &nbsp;|&nbsp; <strong>S&P 500 & Nasdaq</strong> — Finnhub &nbsp;|&nbsp; <strong>10Y Treasury Yield</strong> — FRED API &nbsp;|&nbsp; อัปเดตทุกครั้งที่เปิดไฟล์';
+  }
+
+  // 6. Source / guide tab handled by buildGuide()
+  buildGuide();
+}
+
+function setLang(lang){
+  if(lang === currentLang) return;
+  currentLang = lang;
+  applyLang();
+  buildKPI();
+  buildCharts();
+  buildTable();
+  renderCalendar();
+  buildIndicators();
+  buildGuide();
+  updateFreshness();
+  updateDgs10Date();
+  setStatus(lastFetchTime ? 'live' : 'error');
+  // Update compare chart title if visible
+  const modeEl = document.getElementById('annual-view-select');
+  if(modeEl && modeEl.value === 'compare') buildCompareChart();
+  // Rebuild yield & gold charts in new language
+  if(yieldChartData) buildYieldChart();
+  if(goldSeriesData)  buildGoldChart();
+  // Re-fetch market so date/source labels update in new language
+  fetchMarketData()
+    .then(mkt => applyMarketData(mkt))
+    .catch(()=>{});
+}
+
+window.addEventListener('DOMContentLoaded', async ()=>{
+  // 1. Render immediately with fallback/static data so the page isn't blank
+  applyLang();
+  ensureUpToCurrentMonth();
+  buildKPI(); buildCharts(); buildTable(); renderCalendar(); buildIndicators(); buildGuide();
+  updateFreshness();
+  document.getElementById('footer-ts').textContent =
+    (currentLang==='en' ? 'Viewed: ' : 'เปิดดู: ') +
+    new Date().toLocaleString(currentLang==='en'?'en-US':'th-TH', {dateStyle:'full'});
+
+  // 2. Fetch live data from FRED and re-render on success
+  try {
+    const live = await fetchLiveData();
+    applyLiveData(live);
+    ensureUpToCurrentMonth();
+    computeAnnual2026();          // คำนวณค่าเฉลี่ยปี 2026 จาก live data
+    lastFetchTime = new Date();
+    buildKPI(); buildCharts(); buildTable();
+    updateFreshness();
+    setStatus('live');
+  } catch(err){
+    console.error('FRED fetch error:', err);
+    setStatus('error');
+    updateFreshness();
+  }
+
+  // 3. Fetch live market data (Gold spot, SPY, QQQ) — runs independently
+  fetchMarketData()
+    .then(mkt => applyMarketData(mkt))
+    .catch(err => console.warn('Market data fetch error:', err));
+
+  // 3b. Fetch Gold monthly historical chart
+  fetchGoldMonthly()
+    .then(d => { goldSeriesData = d; buildGoldChart(); })
+    .catch(err => console.warn('Gold monthly fetch error:', err));
+
+  // 4. Fetch live economic calendar from FMP
+  fetchAndMergeCalendar()
+    .catch(err => {
+      console.warn('FMP calendar fetch error:', err);
+      const b = document.getElementById('cal-status-banner');
+      if(b){
+        b.style.background = '#fffbeb'; b.style.borderColor = '#fde68a'; b.style.color = '#92400e';
+        b.innerHTML = currentLang==='en'
+          ? '⚠️ Could not load live calendar from FMP — showing static schedule'
+          : '⚠️ โหลดปฏิทินจาก FMP ไม่สำเร็จ — แสดงตารางนัดหมาย static แทน';
+      }
+    });
+});
+</script>
+</body>
+</html>
